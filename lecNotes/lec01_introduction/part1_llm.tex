@@ -1,0 +1,1462 @@
+\documentclass[11pt]{amsart}
+
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\numberwithin{equation}{section}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}[definition]{Example}
+\newtheorem{exercise}[definition]{Exercise}
+\theoremstyle{plain}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{lemma}[definition]{Lemma}
+\theoremstyle{remark}
+\newtheorem{remark}[definition]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cR}{\mathcal{R}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ip}[2]{\left\langle#1,#2\right\rangle}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\TV}{TV}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\title[How Do Large Language Models Work?]
+{How Do Large Language Models Work?\\
+A Mathematical Guide and Connections to Scientific and World Models}
+\author{Fei Lu}
+\date{Fall 2026. Disclaimer: the notes are written with the help from ChatGPT,
+and the author takes full responsibility for any errors. If you find any
+errors, please contact the author at
+\href{mailto:feilu@math.jhu.edu}{feilu@math.jhu.edu}.}
+
+\begin{document}
+
+\begin{abstract}
+An autoregressive large language model is a parameterized family of
+next-token conditional distributions.  A tokenizer supplies the discrete
+state space, a causally masked Transformer computes the context-dependent
+logits, cross-entropy training fits the conditional law, and a decoding rule
+turns that law into text.  Its analysis must separate the population target,
+finite architecture, optimization algorithm, and deployment rule.  We give an exact
+three-token example in which one attention head implements Bayesian
+in-context learning, and then replace tokens by functions, trajectories, and
+controlled states.  The resulting links to scientific foundation models and
+world models expose additional problems of identifiability, discretization,
+intervention, planning, and rollout stability.
+\end{abstract}
+
+\maketitle
+
+\section{The mathematical object behind a language model}
+\label{sec:language-law}
+
+\paragraph{\textbf{Key question.}}
+What object does an LLM learn, what computation evaluates it, and why can that
+same computation appear to adapt to a prompt without changing its parameters?
+
+The main chain in this note is
+\begin{equation}\label{eq:main-chain}
+\begin{gathered}
+\text{raw text}
+\longrightarrow \text{tokens}
+\longrightarrow \text{causal hidden states}
+\longrightarrow \text{next-token law}\\
+\longrightarrow \text{cross-entropy training}
+\longrightarrow \text{autoregressive generation}
+\longrightarrow \text{prompt-conditioned action}.
+\end{gathered}
+\end{equation}
+Each arrow introduces a different mathematical approximation.  In particular,
+a theorem about the population log-loss minimizer is not a theorem about
+finite-data generalization, optimization of a Transformer, or the quality of a
+decoded answer.
+
+\subsection{Tokenization and finite strings}
+
+Let $\mathcal V$ be a finite vocabulary with $K=|\mathcal V|$ (the K in practice is often order $10^4$ to $10^5$).
+It contains special symbols such as beginning-of-sequence and end-of-sequence tokens.  A
+tokenizer is a deterministic map
+\[
+ \operatorname{Tok}:\{\text{strings}\}\longrightarrow
+ \bigcup_{T\ge 1}\mathcal V^T.
+\]
+Modern tokenizers often use subword or byte-level units; byte-pair encoding is
+one influential construction \cite{SennrichEtAl2016}.  The representation is
+not mathematically neutral: the vocabulary determines sequence length, the
+units on which likelihood is measured, and which patterns are local.
+
+For clarity, first fix a maximum horizon $T$ and include an end-of-sequence
+token.  Let $U_{1:T}=(U_1,\ldots,U_T)$ have population law $p_*$ on
+$\mathcal V^T$.  Represent a shorter string by its first end token and repeat
+that token thereafter; training may mask the repeated positions.  The
+probability chain rule gives
+\begin{equation}\label{eq:chain-rule}
+ p_*(u_{1:T})
+ =
+ \prod_{t=1}^T p_*(u_t\mid u_{<t}),
+ \qquad
+ u_{<t}=(u_1,\ldots,u_{t-1}).
+\end{equation}
+Thus a joint law on strings can be represented by a collection of next-token
+conditionals.
+
+\begin{definition}[Autoregressive language model]
+\label{def:autoregressive-lm}
+An autoregressive language model is a parameterized family
+\[
+ p_\theta(\,\cdot\mid u_{<t})\in\cP(\mathcal V),
+ \qquad \theta\in\Theta,
+\]
+for every admissible prefix $u_{<t}$.  It induces the joint law
+\begin{equation}\label{eq:model-joint-law}
+ p_\theta(u_{1:T})
+ =\prod_{t=1}^T p_\theta(u_t\mid u_{<t}).
+\end{equation}
+\end{definition}
+
+The learned object is therefore a conditional probability vector, not a
+unique answer.  Sampling, greedy decoding, and search are later decisions that
+use this vector in different ways.
+
+\subsection{Why next-token log loss is the natural population target}
+
+Let $q(\,\cdot\mid u_{<t})$ be any candidate conditional law that is positive
+on the support of $p_*(\,\cdot\mid u_{<t})$.  Define its population sequence
+log loss by
+\begin{equation}\label{eq:population-log-loss}
+ \cL(q)
+ =
+ \E_{p_*}\left[
+   -\sum_{t=1}^T\log q(U_t\mid U_{<t})
+ \right].
+\end{equation}
+
+\begin{proposition}[Conditional log loss identifies the token law]
+\label{prop:log-loss-kl}
+Assume that the terms below are finite.  Then
+\begin{equation}\label{eq:conditional-kl-sum}
+ \cL(q)-\cL(p_*)
+ =
+ \sum_{t=1}^T
+ \E\!\left[
+   \KL\!\left(
+     p_*(\,\cdot\mid U_{<t})
+     \,\middle\|\,
+     q(\,\cdot\mid U_{<t})
+   \right)
+ \right]
+ \ge 0.
+\end{equation}
+Equality holds if and only if the two conditional distributions agree
+$p_*$-almost surely at every predicted position.
+\end{proposition}
+
+\begin{proof}
+Condition on $U_{<t}$ and add and subtract
+$-\log p_*(U_t\mid U_{<t})$.  The conditional expectation of the difference is
+the displayed Kullback--Leibler divergence.  Sum over $t$ and use its
+nonnegativity.
+\end{proof}
+
+This proposition explains the statistical target of pretraining in an
+unrestricted model class.  It does not say that a finite Transformer contains
+the true law, that a finite corpus determines it, or that a nonconvex optimizer
+finds the best parameter.
+
+The average token loss is often reported through perplexity,
+\[
+ \operatorname{PPL}(q)
+ =\exp\!\left\{\frac{1}{T}\cL(q)\right\}.
+\]
+Perplexity depends on the tokenizer.  Moreover, the population distribution is
+a distribution of text, not a distribution of truth.  Low next-token loss
+alone does not imply factuality, calibrated uncertainty, valid reasoning, or
+good decisions under a downstream loss.
+
+
+\section{One forward pass through a decoder-only Transformer}
+\label{sec:transformer-forward}
+
+\paragraph{\textbf{Key question.}}
+How does one fixed network map a variable token prefix to the conditional
+probability vector in Definition~\ref{def:autoregressive-lm}?
+
+Let the input contain $N$ tokens $u_1,\ldots,u_N$.  We reserve $N$ for the
+number of tokens or particles, $L$ for the number of Transformer layers, and
+$d$ for the hidden width.  Let $e_{u_i}\in\R^K$ be the one-hot vector of token
+$u_i$.  The initial hidden state is
+\begin{equation}\label{eq:input-embedding}
+ x_i^0=E_{\rm tok}e_{u_i}+r_i+s_i\in\R^d,
+ \qquad i=1,\ldots,N,
+\end{equation}
+where $E_{\rm tok}\in\R^{d\times K}$ is the token-embedding matrix, $r_i$ is
+a positional representation, and $s_i$ may encode a role or modality.  Learned
+absolute positions, sinusoidal encodings, and rotary representations are
+different implementations of the same need: token order must enter the model.
+
+\subsection{Causal self-attention}
+
+At layer $\ell$ and attention head $h$, let
+\[
+ Q_{\ell h},K_{\ell h}\in\R^{d_k\times d},
+ \qquad
+ V_{\ell h}\in\R^{d_v\times d}.
+\]
+Given normalized states $\bar x_i^\ell$, define the query, key, and value
+vectors
+\[
+ q_i^{\ell h}=Q_{\ell h}\bar x_i^\ell,
+ \qquad
+ k_j^{\ell h}=K_{\ell h}\bar x_j^\ell,
+ \qquad
+ v_j^{\ell h}=V_{\ell h}\bar x_j^\ell.
+\]
+The causal attention weights and head output are
+\begin{equation}\label{eq:causal-attention}
+\begin{aligned}
+  z_i^{\ell h} =\sum_{j=1}^i a_{ij}^{\ell h}v_j^{\ell h}, \qquad 
+  a_{ij}^{\ell h} =
+ \frac{
+  \exp\!\left(\ip{q_i^{\ell h}}{k_j^{\ell h}}/\sqrt{d_k}\right)
+  \one_{\{j\le i\}}
+ }{
+  \displaystyle\sum_{m=1}^i
+  \exp\!\left(\ip{q_i^{\ell h}}{k_m^{\ell h}}/\sqrt{d_k}\right)
+ }.
+\end{aligned}
+\end{equation}
+For each $i$, the weights are nonnegative and sum to one.  Thus a single head
+output lies in the convex hull of its value vectors.  The output projection,
+residual connection, and feed-forward layer need not preserve this convexity.
+
+For $H$ heads, concatenate their outputs and apply
+$W_O^\ell\in\R^{d\times Hd_v}$.  Let $d_{\rm ff}$ be the feed-forward width,
+with
+\[
+ W_1^\ell\in\R^{d_{\rm ff}\times d},\quad
+ b_1^\ell\in\R^{d_{\rm ff}},\quad
+ W_2^\ell\in\R^{d\times d_{\rm ff}},\quad
+ b_2^\ell\in\R^d.
+\]
+A simplified pre-normalized residual block is
+\begin{equation}\label{eq:transformer-block}
+\begin{aligned}
+ \bar x_i^\ell
+ &=\operatorname{LN}_\ell(x_i^\ell),\\
+ \widetilde x_i^\ell
+ &=x_i^\ell
+   +W_O^\ell\operatorname{Concat}
+      (z_i^{\ell1},\ldots,z_i^{\ell H}),\\
+ x_i^{\ell+1}
+ &=\widetilde x_i^\ell
+   +W_{2}^\ell
+     \sigma\!\left(
+       W_{1}^\ell\operatorname{LN}'_\ell(\widetilde x_i^\ell)
+       +b_{1}^\ell
+     \right)
+   +b_{2}^\ell.
+\end{aligned}
+\end{equation}
+Layer normalization acts across the $d$ features of each token.  In its basic
+form,
+\[
+ \operatorname{LN}(x)
+ =g\odot
+   \frac{x-\bar x\one_d}{\sqrt{d^{-1}\norm{x-\bar x\one_d}^2+\varepsilon}}
+   +b,
+ \qquad
+ \bar x=d^{-1}\sum_{j=1}^d x_j,
+\]
+with learned $g,b\in\R^d$ and fixed $\varepsilon>0$.  Practical architectures
+vary in their normalization, nonlinearities, biases, attention variants, and
+parameter sharing, but the causal dependency is invariant across these
+choices.
+
+After $L$ layers, the logits at position $i$ are
+\begin{equation}\label{eq:output-softmax}
+ g_i=W_{\rm out}\operatorname{LN}_{\rm out}(x_i^L)+b_{\rm out}\in\R^K,
+ \qquad
+ p_\theta(v\mid u_{\le i})
+ =\frac{e^{(g_i)_v}}{\sum_{w\in\mathcal V}e^{(g_i)_w}}, 
+\end{equation}
+where $W_{\rm out}\in\R^{K\times d}$ and $b_{\rm out}\in\R^K$.
+The same parameter vector $\theta$ contains the embeddings, all attention and
+feed-forward weights, normalizations, and the output map.
+
+When matrix notation is convenient below, we stack token states as rows of
+$X\in\R^{N\times d}$.  Part II uses the column-token convention
+$X^\top\in\R^{d\times N}$; the two descriptions are transposes of one
+another.
+
+\subsection{Two exact structural properties}
+
+\begin{proposition}[Causal dependence]
+\label{prop:causal-dependence}
+For the architecture in \eqref{eq:input-embedding}--\eqref{eq:transformer-block},
+$x_i^\ell$ is a function only of $(u_1,\ldots,u_i)$ and the fixed marks at
+positions $1,\ldots,i$.  In particular, the logits used to predict $U_{i+1}$
+do not depend on future tokens.
+\end{proposition}
+
+\begin{proof}
+The assertion holds for $\ell=0$ by \eqref{eq:input-embedding}.  Assume it
+holds at layer $\ell$.  The causal mask in \eqref{eq:causal-attention} restricts
+$z_i^{\ell h}$ to states $\bar x_j^\ell$ with $j\le i$, each of which depends
+only on $u_{\le j}\subseteq u_{\le i}$.  The output projection, normalization,
+residual addition, and feed-forward map act at position $i$.  They cannot
+introduce dependence on a later token.  Induction over $\ell$ proves the claim.
+\end{proof}
+
+This property permits teacher-forced training: all positions can be processed
+in parallel even though each prediction uses only its true past.
+
+\begin{proposition}[Permutation equivariance without marks]
+\label{prop:permutation-equivariance}
+Remove positional and role marks and replace the causal mask by unmasked
+self-attention.  If $P$ is an $N\times N$ permutation matrix acting on token
+rows, then every Transformer block satisfies
+\[
+ \operatorname{Block}(PX)=P\operatorname{Block}(X).
+\]
+Thus an unmarked, unmasked stack cannot distinguish two sequences that differ
+by a permutation through any permutation-invariant readout.  More precisely,
+the stack carries no absolute order information: permuting the input rows only
+permutes the output rows.
+\end{proposition}
+
+\begin{proof}
+Let $S(X)=(XQ^\top)(XK^\top)^\top/\sqrt{d_k}$ be the score matrix for one
+head, using row-token notation.  Then $S(PX)=PS(X)P^\top$.  Row-wise softmax
+commutes with simultaneous row and column permutation, so
+\[
+ \softmax(S(PX))=P\softmax(S(X))P^\top.
+\]
+Since $(PX)V^\top=P(XV^\top)$, the attention output is permuted by $P$.
+Concatenation,
+row-wise normalization, pointwise feed-forward maps, and residual addition all
+preserve the equivariance.
+\end{proof}
+
+Positions and causal masks are therefore not cosmetic.  They convert a
+set-valued interaction into an ordered computation.
+
+\subsection{The exact interacting-particle identity}
+
+The link to Part II begins before any limit.  For one unmasked head, define the
+empirical token measure
+\[
+ \mu_X^N=\frac1N\sum_{j=1}^N\delta_{x_j}.
+\]
+Then the attention output is exactly
+\begin{equation}\label{eq:attention-empirical-measure}
+ \operatorname{Att}_\theta(X)_i
+ =
+ \frac{\displaystyle
+   \int e^{\ip{Qx_i}{Ky}/\sqrt{d_k}}Vy\,\mu_X^N(\dd y)
+ }{\displaystyle
+   \int e^{\ip{Qx_i}{Kz}/\sqrt{d_k}}\,\mu_X^N(\dd z)
+ }.
+\end{equation}
+For language, an unmarked measure loses order.  Introduce the marked empirical
+measure
+\[
+ \eta_X^N=\frac1N\sum_{j=1}^N\delta_{(j,x_j)}.
+\]
+The causal head at position $i$ has the exact marked-measure representation
+\begin{equation}\label{eq:causal-attention-marked-measure}
+ \operatorname{Att}^{\rm causal}_\theta(X)_i
+ =
+ \frac{\displaystyle
+   \int \one_{\{m\le i\}}
+   e^{\ip{Qx_i}{Ky}/\sqrt{d_k}}Vy\,
+   \eta_X^N(\dd m,\dd y)
+ }{\displaystyle
+   \int \one_{\{m\le i\}}
+   e^{\ip{Qx_i}{Ky}/\sqrt{d_k}}\,
+   \eta_X^N(\dd m,\dd y)
+ }.
+\end{equation}
+This is an exact finite-token identity.  Replacing the empirical measure by a
+limiting law, sending the layer count to a continuous-depth limit, or taking a
+high-dimensional limit are separate mathematical steps.
+
+
+\section{How the parameters are learned}
+\label{sec:training}
+
+\paragraph{\textbf{Key question.}}
+What does the training algorithm optimize, and which conclusions follow from
+that objective alone?
+
+Let the pretraining corpus be
+\[
+ \cD_{\rm pre}=\{u_{1:T_r}^{(r)}:r=1,\ldots,R\},
+ \qquad
+ S=\sum_{r=1}^R T_r.
+\]
+The empirical next-token loss is
+\begin{equation}\label{eq:empirical-pretraining-loss}
+ \widehat\cL_S(\theta)
+ =
+ -\frac1S
+ \sum_{r=1}^R\sum_{t=1}^{T_r}
+ \log p_\theta\!\left(
+   u_t^{(r)}\mid u_{<t}^{(r)}
+ \right).
+\end{equation}
+The ground-truth prefix is supplied at every training position; this is
+\emph{teacher forcing}.  Causal masking makes all the losses in a document
+computable in one parallel forward pass.
+
+\subsection{The local softmax calculation}
+
+For logits $g\in\R^K$ and target class $y$, the single-token loss is
+\begin{equation}\label{eq:softmax-loss}
+ \ell(g;y)
+ =-\log\frac{e^{g_y}}{\sum_{j=1}^K e^{g_j}}
+ =-g_y+\log\sum_{j=1}^K e^{g_j}.
+\end{equation}
+
+\begin{proposition}[Gradient and curvature of the output loss]
+\label{prop:softmax-gradient}
+Let $p=\softmax(g)$ and let $e_y$ be the $y$th coordinate vector.  Then
+\begin{equation}\label{eq:softmax-gradient}
+ \nabla_g\ell(g;y)=p-e_y,
+ \qquad
+ \nabla_g^2\ell(g;y)=\operatorname{diag}(p)-pp^\top\succeq0.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Differentiating \eqref{eq:softmax-loss} gives
+$\partial_{g_j}\ell=p_j-\one_{\{j=y\}}$.  A second derivative gives the
+matrix $\operatorname{diag}(p)-pp^\top$.  For $a\in\R^K$,
+\[
+ a^\top(\operatorname{diag}(p)-pp^\top)a
+ =\sum_jp_ja_j^2-\left(\sum_jp_ja_j\right)^2
+ =\operatorname{Var}_{J\sim p}(a_J)\ge0.
+\]
+\end{proof}
+
+The loss is convex in the output logits but not in the full parameter vector
+$\theta$.  Backpropagation applies the chain rule through every operation in
+Section~\ref{sec:transformer-forward}.  A schematic minibatch update is
+\begin{equation}\label{eq:sgd-update}
+ \theta_{k+1}
+ =\theta_k-\gamma_k\widehat G_k,
+ \qquad
+ \widehat G_k
+ =\frac1{|B_k|}\sum_{b\in B_k}\nabla_\theta\ell_b(\theta_k),
+\end{equation}
+with learning rate $\gamma_k$.  If $B_k$ is sampled uniformly from a fixed
+finite collection of token losses, then $\widehat G_k$ is an unbiased gradient
+of that finite empirical loss.  Adam and related methods replace the scalar
+step by adaptive moment-based preconditioning.  None of these observations
+gives a global convergence theorem for a production-scale Transformer.
+
+Empirical scaling studies found regular power-law behavior of language-model
+loss over substantial ranges of model size, data, and compute
+\cite{KaplanEtAl2020,HoffmannEtAl2022}.  These are empirical relations within
+specified regimes, not universal learning-theory laws and not explanations of
+semantic competence.
+
+\subsection{Why a chat model is not merely a base language model}
+
+Next-token pretraining imitates the distribution of the corpus.  Instruction
+tuning instead minimizes a supervised loss on prompt--response pairs.  A later
+preference stage may compare candidate responses and optimize a learned reward;
+InstructGPT is an influential example \cite{OuyangEtAl2022}.
+
+One useful idealization starts from a base response law $p_0(\,\cdot\mid c)$
+and a bounded reward $r(c,y)$.  For a fixed prompt $c$, consider
+\begin{equation}\label{eq:kl-regularized-preference}
+ \sup_{\pi(\cdot\mid c)}
+ \left\{
+   \E_{Y\sim\pi(\cdot\mid c)}[r(c,Y)]
+   -\beta\KL\!\left(
+      \pi(\,\cdot\mid c)\|p_0(\,\cdot\mid c)
+    \right)
+ \right\},
+ \qquad \beta>0.
+\end{equation}
+
+\begin{proposition}[An idealized preference tilt]
+\label{prop:gibbs-tilt}
+If
+$Z(c)=\E_{p_0(\cdot\mid c)}[e^{r(c,Y)/\beta}]<\infty$, the optimizer of
+\eqref{eq:kl-regularized-preference} is
+\begin{equation}\label{eq:gibbs-tilt}
+ \pi^*(y\mid c)
+ =\frac{p_0(y\mid c)e^{r(c,y)/\beta}}{Z(c)}.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Define $\pi^*$ by \eqref{eq:gibbs-tilt}.  For any $\pi\ll p_0$,
+\[
+ \E_\pi[r]-\beta\KL(\pi\|p_0)
+ =\beta\log Z(c)-\beta\KL(\pi\|\pi^*).
+\]
+The last term is minimized uniquely at $\pi=\pi^*$.
+\end{proof}
+
+This identity explains how a reward can tilt a pretrained distribution while a
+KL penalty discourages excessive departure from it.  Actual preference
+pipelines must estimate the reward and approximately optimize a parameterized
+policy, so the proposition is a benchmark rather than a description of every
+post-training algorithm.
+
+
+\section{From logits to generated text}
+\label{sec:generation}
+
+\paragraph{\textbf{Key question.}}
+How does a conditional probability vector become one finite output string?
+
+Given a prompt $c=u_{1:N}$, full-softmax ancestral sampling repeats
+\begin{equation}\label{eq:ancestral-step}
+ U_{N+t}\sim p_\theta(\,\cdot\mid U_{1:N+t-1})
+\end{equation}
+until an end token or a prescribed horizon is reached.
+
+\begin{proposition}[Ancestral sampling realizes the product law]
+\label{prop:ancestral-law}
+Conditional on the prompt $c$, the procedure in
+\eqref{eq:ancestral-step} generates
+\begin{equation}\label{eq:conditional-product-law}
+ \Prob_\theta(U_{N+1:N+T}=y_{1:T}\mid c)
+ =\prod_{t=1}^T
+   p_\theta(y_t\mid c,y_{<t}).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Apply the conditional probability chain rule to the sequential sampling
+procedure.  At step $t$, its transition probability is precisely the $t$th
+factor on the right.
+\end{proof}
+
+If $g_v$ is the model logit for token $v$, temperature decoding uses
+\begin{equation}\label{eq:temperature-law}
+ p_{\theta,\tau_{\rm dec}}(v\mid c)
+ =\frac{e^{g_v/\tau_{\rm dec}}}
+        {\sum_{w\in\mathcal V}e^{g_w/\tau_{\rm dec}}},
+ \qquad \tau_{\rm dec}>0.
+\end{equation}
+At $\tau_{\rm dec}=1$ this is the trained softmax.  As
+$\tau_{\rm dec}\downarrow0$, it concentrates on the largest logit when the
+maximizer is unique.  Top-$k$ and nucleus sampling first truncate the support
+and then renormalize.  Greedy decoding takes the locally most probable token,
+while beam search approximately searches several prefixes.  These rules change
+the output law; greedy decoding does not in general find the globally most
+probable sequence.
+
+Training conditions on true prefixes, whereas free-running generation
+conditions on previously generated tokens.  A small one-step average loss can
+therefore coexist with rare but consequential errors along a long generated
+trajectory.  The same issue will reappear for scientific rollouts and world
+models.
+
+At inference, previously computed keys and values can be cached.  Generating a
+new token then attends to the cached prefix rather than recomputing every old
+hidden state.  This reduces redundant computation, but exact dense attention
+still compares the new token with all preceding tokens.
+
+
+\section{A complete miniature model of in-context learning}
+\label{sec:toy-icl}
+
+\paragraph{\textbf{Key question.}}
+Can a fixed attention mechanism exactly change its prediction using only a
+short prompt?
+
+The following example separates representability from optimization.  It is
+small enough that the Bayes rule and the attention weights can both be written
+exactly.
+
+\begin{example}[A noisy two-task language]
+\label{ex:noisy-task}
+Let a latent task $W\in\{-1,+1\}$ be uniform.  Conditional on $W$, observe
+$Y_1,Y_2,Y_3\in\{-1,+1\}$ independently with
+\begin{equation}\label{eq:noisy-task-law}
+ \Prob(Y_i=W\mid W)=\frac34,
+ \qquad
+ \Prob(Y_i=-W\mid W)=\frac14.
+\end{equation}
+A pretraining episode is serialized as $(Y_1,Y_2,Y_3,W)$.  The final
+next-token problem is to predict the task token $W$ from the three-token
+prompt.
+\end{example}
+
+Let $S_3=Y_1+Y_2+Y_3$.  The posterior log odds are
+\begin{equation}\label{eq:toy-posterior-odds}
+ \log\frac{\Prob(W=+1\mid Y_{1:3})}
+          {\Prob(W=-1\mid Y_{1:3})}
+ =S_3\log 3.
+\end{equation}
+Consequently,
+\begin{equation}\label{eq:toy-posterior-values}
+\begin{array}{c|cccc}
+S_3&3&1&-1&-3\\ \hline
+\Prob(W=+1\mid Y_{1:3})
+&27/28&3/4&1/4&1/28.
+\end{array}
+\end{equation}
+
+\begin{proposition}[One attention head realizes the Bayes rule]
+\label{prop:toy-attention-bayes}
+There is a width-two, one-head causal attention model with fixed weights whose
+next-token softmax after $(Y_1,Y_2,Y_3)$ equals the posterior in
+\eqref{eq:toy-posterior-values} for every prompt.
+\end{proposition}
+
+\begin{proof}
+For this exact toy construction, omit layer normalization and the
+feed-forward sublayer; retain one attention sublayer, its residual connection,
+and the final linear readout.
+Embed token $Y_i$ as $x_i=(Y_i,0)\in\R^2$.  Set queries and keys to zero, so at
+position $3$ the causal attention weights on positions $1,2,3$ are all $1/3$.
+Choose the value map
+\[
+ V(y,0)=(0,y).
+\]
+The head output is $(0,m)$ with $m=S_3/3$.  After the residual connection, the
+hidden state is $(Y_3,m)$; choose the output map to ignore the first coordinate
+and set
+\[
+ g_+(m)=\frac32(\log3)m,
+ \qquad
+ g_-(m)=-\frac32(\log3)m.
+\]
+Then
+\[
+ g_+(m)-g_-(m)=3(\log3)m=S_3\log3,
+\]
+which equals the posterior log odds in \eqref{eq:toy-posterior-odds}.  The
+two-class softmax therefore gives the exact Bayes posterior.
+\end{proof}
+
+Greedy decoding implements majority vote, whereas sampling retains posterior
+uncertainty.  The network weights do not change when the three prompt tokens
+change.  This is literal in-context adaptation.  It is only a representability
+result: it does not say that gradient descent must discover these weights or
+that an open-ended LLM performs exact Bayesian inference.
+
+\subsection{The general latent-task benchmark}
+
+Let $W\sim\Pi$ index a task or rule.  A fresh context contains $n$
+demonstrations
+\[
+ C_n=((Z_1,Y_1),\ldots,(Z_n,Y_n)),
+\]
+and a query $Z_*$.  Suppose that $Z_*$ is fixed by the experiment and
+$Y_*\mathrel{\perp\!\!\!\perp}C_n\mid(W,Z_*)$.  For every measurable
+$A\subseteq\cY$, the posterior predictive law is
+\begin{equation}\label{eq:general-posterior-predictive}
+ \Prob(Y_*\in A\mid C_n,Z_*)
+ =\int
+   \Prob_w(Y_*\in A\mid Z_*)\,
+   \Pi(\dd w\mid C_n).
+\end{equation}
+If the query also contains information about $W$, the posterior must condition
+on $(C_n,Z_*)$.
+
+Write $M$ for the number of pretraining tasks or episodes and $n$ for the
+number of demonstrations from a fresh task.  A trained Transformer defines an
+action
+\begin{equation}\label{eq:icl-action-risk}
+ \widehat a_*
+ =\mathsf T_{\widehat\theta_M}(C_n;Z_*),
+ \qquad
+ \cR_{M,n}
+ =\E\!\left[
+   \ell(\widehat a_*,Y_*)
+ \right].
+\end{equation}
+The expectation includes the pretraining sample and the fresh task, context,
+query, and response.  Increasing $M$ estimates shared structure; increasing
+$n$ supplies information about the realized task.  They address different
+uncertainties.
+
+\begin{proposition}[More nested context reduces Bayes log risk]
+\label{prop:context-entropy}
+Assume $Y_*$ is discrete and integrable log losses are finite.  If
+$\sigma(C_n,Z_*)\subseteq\sigma(C_{n+1},Z_*)$, then
+\begin{equation}\label{eq:entropy-monotonicity}
+ H(Y_*\mid C_{n+1},Z_*)
+ \le H(Y_*\mid C_n,Z_*).
+\end{equation}
+Equivalently, the expected Bayes log loss cannot increase when an additional
+context observation is revealed.
+\end{proposition}
+
+\begin{proof}
+The difference is the conditional mutual information
+\[
+ H(Y_*\mid C_n,Z_*)-H(Y_*\mid C_{n+1},Z_*)
+ =I(Y_*;C_{n+1}\mid C_n,Z_*)\ge0,
+\]
+where $C_{n+1}$ denotes the augmented nested context.
+\end{proof}
+
+This is an oracle statement.  A learned finite network may fail to use the
+additional information and can even perform worse with a poorly designed or
+out-of-distribution prompt.  Xie et al.~\cite{XieEtAl2022} prove an
+implicit-Bayes mechanism for a particular mixture-of-Hidden-Markov-models
+pretraining distribution; GPT-3 supplies the canonical large-scale empirical
+observation of fixed-weight few-shot prompting \cite{BrownEtAl2020}.
+
+
+\section{From language models to scientific foundation models}
+\label{sec:scientific-fm}
+
+\paragraph{\textbf{Key question.}}
+What changes when tokens represent functions, fields, equations, and solution
+operators rather than words?
+
+Let $\cX$ and $\cY$ be separable Hilbert spaces.  A scientific task $W=w$ may
+determine a solution operator
+\begin{equation}\label{eq:scientific-operator}
+ \cS_w:\cX\longrightarrow\cY,
+\end{equation}
+for an ODE, PDE, inverse problem, or controlled dynamical system.  A fresh
+context can contain noisy probes
+\begin{equation}\label{eq:scientific-context}
+ C_n=\{(f_i,\cS_wf_i+\xi_i)\}_{i=1}^n,
+ \qquad \xi_i\in\cY,
+\end{equation}
+along with symbolic equations, coefficients, geometry, boundary conditions,
+sensor locations, or natural-language metadata.  Given a query $f_*$, a
+pretrained model returns
+\begin{equation}\label{eq:scientific-action}
+ \widehat u_*
+ =\mathsf T_{\widehat\theta_M}(C_n;f_*).
+\end{equation}
+The output may instead be an unknown coefficient, a governing equation, a
+future trajectory, or a conditional law.  These are different estimands and
+require different losses.
+
+The analogy with an LLM is precise at the level of conditional learning:
+\begin{equation}\label{eq:llm-science-comparison}
+\begin{aligned}
+\text{LLM:}\quad
+&p_\theta(u_{t+1}\mid u_{\le t}),\\
+\text{scientific model:}\quad
+&\mathsf P_\theta(\dd u\mid C_n,f_*),
+\qquad u=\cS_Wf_*.
+\end{aligned}
+\end{equation}
+Pretraining amortizes computation across a distribution of documents or
+scientific tasks; context identifies the part of that shared structure relevant
+to the query.
+
+The scientific setting adds structure absent from generic token prediction:
+\begin{enumerate}[label=(\arabic*)]
+\item $\cS_w$ acts between function spaces, so input and output resolutions
+$(p,q)$ introduce approximation and discretization error.
+\item The context may not identify $w$ or even $\cS_wf_*$; inverse stability and
+the probe information operator determine what is observable.
+\item Conservation laws, symmetries, boundary conditions, semigroup structure,
+and well-posedness can restrict the admissible operator class.
+\item A small pointwise or one-step loss need not control a solver, inverse
+reconstruction, or long rollout.
+\end{enumerate}
+
+\subsection{Four distinct meanings of adaptation}
+
+It is important not to place all scientific foundation models under the label
+``in-context learning.''
+
+\paragraph{\textbf{Data-prompted operator adaptation.}}
+ICON, introduced by Yang, Liu, Meng, and Osher
+\cite{YangEtAl2023ICON}, uses condition--response function pairs to specify a
+new operator and answers a query without updating the weights.  This is the
+closest analogue of GPT-style ICL.  The demonstrated operators belong to
+controlled synthetic families, and the work does not prove a universal
+operator-learning rate.
+
+\paragraph{\textbf{Symbolically specified PDE prediction.}}
+PDEformer-1, developed by Ye et al. with Bin Dong
+\cite{YeEtAl2024PDEformer}, represents a known one-dimensional PDE as a graph,
+combines symbolic and numerical inputs with a graph Transformer, and queries an
+implicit solution representation.  It demonstrates zero-shot prediction in
+declared families and data-efficient fine-tuning for new equations.  The
+symbolic PDE is part of the input; this is not context-only identification from
+probe pairs.
+
+\paragraph{\textbf{Multimodal equation and trajectory prediction.}}
+PROSE \cite{LiuEtAl2024PROSE} jointly uses numerical trajectories and symbolic
+ODEs to forecast solutions and generate governing expressions across a
+synthetic equation family.  Its zero-shot scope is relative to that generator.
+
+\paragraph{\textbf{Pretraining followed by fine-tuning.}}
+Poseidon \cite{HerdeEtAl2024Poseidon} pretrains an operator Transformer on
+fluid-dynamics solution operators and transfers it by fine-tuning to downstream
+PDE tasks.  Its use of multiple temporal pairs exploits semigroup structure;
+transfer after fine-tuning is not the same as fixed-weight ICL.
+
+\subsection{Why rollout stability is a separate theorem}
+
+Suppose a scientific model learns a one-step map $\widehat S$ intended to
+approximate a true evolution map $S$.  Repeated application is a deterministic
+world model.
+
+\begin{proposition}[Error accumulation for an iterated operator]
+\label{prop:deterministic-rollout}
+Let $D\subseteq\cX$ be invariant under $S$ and $\widehat S$.  Assume
+\begin{equation}\label{eq:rollout-assumptions}
+ \norm{Sx-Sy}\le L_S\norm{x-y},
+ \qquad
+ \sup_{x\in D}\norm{\widehat Sx-Sx}\le\delta.
+\end{equation}
+Then for every $x\in D$ and integer $k\ge1$,
+\begin{equation}\label{eq:rollout-bound}
+ \norm{\widehat S^kx-S^kx}
+ \le
+ \delta\sum_{j=0}^{k-1}L_S^j
+ =
+ \begin{cases}
+ \delta(L_S^k-1)/(L_S-1),&L_S\ne1,\\
+ k\delta,&L_S=1.
+ \end{cases}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Let $e_k=\norm{\widehat S^kx-S^kx}$.  Invariance and
+\eqref{eq:rollout-assumptions} give
+\[
+\begin{aligned}
+ e_{k+1}
+ &\le
+ \norm{\widehat S(\widehat S^kx)-S(\widehat S^kx)}
+ +\norm{S(\widehat S^kx)-S(S^kx)}\\
+ &\le\delta+L_Se_k.
+\end{aligned}
+\]
+Since $e_0=0$, iteration yields \eqref{eq:rollout-bound}.
+\end{proof}
+
+For $L_S<1$, the bound is uniform in time; for $L_S=1$, it grows linearly;
+for $L_S>1$, the worst-case estimate grows exponentially.  Directly learning a
+long-time solution operator and iterating a one-step model are therefore
+different approximation problems.
+
+
+\section{World models: prediction under intervention and planning}
+\label{sec:world-models}
+
+\paragraph{\textbf{Key question.}}
+When does a sequence predictor become a model that an agent can use to imagine
+and choose future actions?
+
+Consider a partially observed controlled process with latent state $S_t$,
+action $A_t$, observation $O_t$, and reward $R_t$:
+\begin{equation}\label{eq:pomdp-law}
+\begin{aligned}
+ S_{t+1}&\sim K_*(\,\cdot\mid S_t,A_t),\\
+ O_t&\sim G_*(\,\cdot\mid S_t),\\
+ R_t&\sim \rho_*(\,\cdot\mid S_t,A_t).
+\end{aligned}
+\end{equation}
+The observable history is
+$H_t=(O_1,A_1,R_1,\ldots,A_{t-1},R_{t-1},O_t)$.  A world model learns a
+predictive object that can be rolled forward under proposed actions.  It may
+model observations directly,
+\begin{equation}\label{eq:observable-world-model}
+ p_\theta(O_{t+1},R_t\mid H_t,A_t),
+\end{equation}
+or introduce a learned latent state $Z_t$ with transition, observation, and
+reward models
+\begin{equation}\label{eq:latent-world-model}
+ p_\theta(Z_{t+1}\mid Z_t,A_t),
+ \qquad
+ p_\theta(O_t\mid Z_t),
+ \qquad
+ p_\theta(R_t\mid Z_t,A_t).
+\end{equation}
+An inference model $q_\phi(Z_t\mid H_t)$ estimates the current latent state
+from history.
+
+\begin{definition}[World model for a fixed interface]
+\label{def:world-model}
+Write $Y_{t+1}=(R_t,O_{t+1})$.  A world model is a family of
+action-conditioned predictive kernels
+\[
+ \widehat P_\theta(\dd y_{t+1}\mid h_t,a_t)
+\]
+that can be recursively composed with a policy: a predicted outcome is
+appended to the history and used to predict the next outcome.  The definition
+alone does not assert that a latent coordinate is physical, that the learned
+kernel identifies causal effects outside the support of the training actions,
+or that it transfers to every environment.
+\end{definition}
+
+The distinction between a one-step fit and a complete imagined trajectory has
+an exact information-theoretic form.  Let $\nu$ be the initial observation law
+and define the true observable predictive kernel by
+\[
+ P_*^{\rm obs}(\dd y_{t+1}\mid h_t,a_t)
+ =\operatorname{Law}(Y_{t+1}\in\dd y_{t+1}\mid H_t=h_t,A_t=a_t).
+\]
+Let $\pi(\dd a_t\mid h_t)$ be any possibly history-dependent policy.  The
+true and learned laws of a horizon-$J$ trajectory are
+\begin{align}
+ \mathbf P_{*,J}^{\pi}(\dd h_{J+1})
+ &=\nu(\dd o_1)\prod_{t=1}^J
+   \pi(\dd a_t\mid h_t)P_*^{\rm obs}(\dd y_{t+1}\mid h_t,a_t),
+ \label{eq:true-trajectory-law}\\
+ \widehat{\mathbf P}_{\theta,J}^{\pi}(\dd h_{J+1})
+ &=\nu(\dd o_1)\prod_{t=1}^J
+   \pi(\dd a_t\mid h_t)\widehat P_\theta
+   (\dd y_{t+1}\mid h_t,a_t).
+ \label{eq:learned-trajectory-law}
+\end{align}
+
+\begin{proposition}[Trajectory KL chain rule]
+\label{prop:trajectory-kl}
+Suppose that the true one-step kernel is absolutely continuous with respect to
+the learned kernel at every history--action pair reached under
+$\mathbf P_{*,J}^{\pi}$.  Then, with values in $[0,\infty]$,
+\begin{equation}\label{eq:trajectory-kl}
+ \KL\!\left(
+   \mathbf P_{*,J}^{\pi}
+   \,\middle\|\,
+   \widehat{\mathbf P}_{\theta,J}^{\pi}
+ \right)
+ =\sum_{t=1}^J
+  \E_{\mathbf P_{*,J}^{\pi}}
+  \left[
+   \KL\!\left(
+    P_*^{\rm obs}(\,\cdot\mid H_t,A_t)
+    \,\middle\|\,
+    \widehat P_\theta(\,\cdot\mid H_t,A_t)
+   \right)
+  \right].
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+In the likelihood ratio of
+\eqref{eq:true-trajectory-law} with respect to
+\eqref{eq:learned-trajectory-law}, the common initial law and policy factors
+cancel.  Hence the log likelihood ratio is the sum of the $J$ conditional log
+likelihood ratios.  Taking expectation under the true trajectory law and then
+conditioning on $(H_t,A_t)$ gives \eqref{eq:trajectory-kl}.
+\end{proof}
+
+Thus trajectory KL is a sum of one-step errors, but the errors are evaluated
+under the state--action occupancy of the policy being assessed.  Small
+training loss under one behavior policy does not control a new planning policy
+without coverage, uniform approximation, or another change-of-measure
+argument.
+
+\subsection{Latent-state training}
+
+Consider a trajectory of length $T$.  For observations $O_{1:T}$ and
+action--reward pairs $(A_t,R_t)_{t=1}^{T-1}$, one possible factorization is
+\begin{equation}\label{eq:world-generative-factorization}
+\begin{aligned}
+&p_\theta(z_{1:T},o_{1:T},r_{1:T-1}\mid a_{1:T-1})\\
+&\qquad={}
+ p_\theta(z_1)
+ \prod_{t=1}^T p_\theta(o_t\mid z_t)
+ \prod_{t=1}^{T-1}
+ p_\theta(r_t\mid z_t,a_t)
+ p_\theta(z_{t+1}\mid z_t,a_t).
+\end{aligned}
+\end{equation}
+A sequential variational posterior of the form
+\begin{equation}\label{eq:world-variational-posterior}
+ q_\phi(z_{1:T}\mid H_T)
+ =q_\phi(z_1\mid H_1)
+  \prod_{t=1}^{T-1}
+  q_\phi(z_{t+1}\mid z_t,H_{t+1})
+\end{equation}
+yields the evidence lower bound
+\begin{equation}\label{eq:world-elbo}
+\begin{aligned}
+ \log p_\theta(o_{1:T},r_{1:T-1}\mid a_{1:T-1})
+ \ge{}&
+ \E_{q_\phi}\!\left[
+   \sum_{t=1}^T\log p_\theta(o_t\mid Z_t)
+   +\sum_{t=1}^{T-1}\log p_\theta(r_t\mid Z_t,a_t)
+ \right]\\
+ &-\KL(q_\phi(Z_1\mid H_1)\|p_\theta(Z_1))\\
+ &-\sum_{t=1}^{T-1}
+   \E_{q_\phi(Z_t\mid H_t)}\!\left[
+     \KL\!\left(
+       q_\phi(Z_{t+1}\mid Z_t,H_{t+1})
+       \|p_\theta(Z_{t+1}\mid Z_t,a_t)
+     \right)
+   \right].
+\end{aligned}
+\end{equation}
+This is one template, not a definition.  PlaNet uses a recurrent state-space
+model for latent planning \cite{HafnerEtAl2019Planet}; Dreamer learns behavior
+from imagined latent rollouts \cite{HafnerEtAl2020Dreamer}.  MuZero instead
+learns latent dynamics, rewards, values, and policies sufficient for tree
+search without requiring pixel reconstruction \cite{SchrittwieserEtAl2020}.
+Thus a useful world-model state need not be a faithful physical coordinate; it
+may retain only decision-relevant information.
+
+\subsection{Planning uses the model outside a one-step loss}
+
+For a planning horizon $H_{\rm plan}$, a model-based agent evaluates proposed
+actions by
+\begin{equation}\label{eq:model-return}
+ \widehat J_{H_{\rm plan}}(a_{t:t+H_{\rm plan}-1};H_t)
+ =\E_\theta\!\left[
+   \sum_{k=0}^{H_{\rm plan}-1}\gamma^kR_{t+k}
+   \,\middle|\,
+   H_t,a_{t:t+H_{\rm plan}-1}
+ \right].
+\end{equation}
+It may optimize the action sequence online, train a policy inside imagined
+trajectories, or combine a learned model with tree search.  The relevant error
+is therefore not merely the average one-step prediction loss under the training
+distribution.
+
+The following elementary simulation bound makes the point precise.  Define
+$\TV(\mu,\nu)=\sup_A|\mu(A)-\nu(A)|$.
+
+\begin{proposition}[A discounted simulation bound]
+\label{prop:simulation-lemma}
+Consider two fully observed discounted MDPs with the same reward
+$0\le r(s,a)\le R_{\max}$, discount $0<\gamma<1$, and transition kernels
+$P$ and $\widehat P$.  If
+\begin{equation}\label{eq:uniform-tv-error}
+ \sup_{s,a}\TV(P(\,\cdot\mid s,a),\widehat P(\,\cdot\mid s,a))
+ \le\varepsilon,
+\end{equation}
+then for every stationary policy $\pi$,
+\begin{equation}\label{eq:simulation-bound}
+ \norm{V_P^\pi-V_{\widehat P}^\pi}_\infty
+ \le
+ \frac{\gamma R_{\max}}{(1-\gamma)^2}\,\varepsilon.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Let $P_\pi$ and $\widehat P_\pi$ be the policy-averaged kernels and let
+$r_\pi$ be the common expected reward.  The Bellman equations give
+\[
+ V_P^\pi-V_{\widehat P}^\pi
+ =\gamma P_\pi(V_P^\pi-V_{\widehat P}^\pi)
+  +\gamma(P_\pi-\widehat P_\pi)V_{\widehat P}^\pi.
+\]
+Since $0\le V_{\widehat P}^\pi\le R_{\max}/(1-\gamma)$ and mixing over actions
+preserves the total-variation bound,
+\[
+ \norm{(P_\pi-\widehat P_\pi)V_{\widehat P}^\pi}_\infty
+ \le\frac{R_{\max}}{1-\gamma}\varepsilon.
+\]
+The layer-cake representation gives the constant one, rather than two,
+because $V_{\widehat P}^\pi$ is nonnegative and bounded and because we use the
+convention $\TV(\mu,\nu)=\sup_A|\mu(A)-\nu(A)|$.
+Taking sup norms, moving the term
+$\gamma\norm{V_P^\pi-V_{\widehat P}^\pi}_\infty$ to the left, and dividing by
+$1-\gamma$ proves the result.
+\end{proof}
+
+The uniform hypothesis in \eqref{eq:uniform-tv-error} is strong.  A model
+trained on trajectories from one behavior policy may be inaccurate under the
+state--action distribution produced by a new planner.  This is the world-model
+version of distribution shift and model exploitation.
+
+\subsection{From recurrent world models to foundation world models}
+
+Ha and Schmidhuber \cite{HaSchmidhuber2018} learned compressed visual states
+and recurrent stochastic dynamics, then trained a small controller using the
+learned model; their experiments established the modern terminology in a
+limited set of game environments.  Later systems separated several meanings
+of a world model:
+\begin{enumerate}[label=(\arabic*)]
+\item a reconstructive latent simulator, as in PlaNet and Dreamer;
+\item a decision-sufficient latent model, as in MuZero;
+\item a large generative interactive environment pretrained from broad video
+data, as in Genie \cite{BruceEtAl2024Genie}.
+\end{enumerate}
+Genie combines a video tokenizer, autoregressive dynamics, and a latent-action
+model learned from unlabeled gameplay videos.  It is a useful example of a
+``foundation world model,'' but its reported scope is still far from a general
+physical simulator: the original system has short memory, slow generation,
+and can produce unrealistic futures.
+
+An LLM is not automatically a world model.  Its token law is trained on
+observational text, while a world model for control must predict consequences
+under interventions $A_t=a$.  Text correlations need not identify such causal
+effects; a hidden state need not correspond to a physical state; and fluent
+rollouts need not be dynamically calibrated.  A multimodal LLM can nevertheless
+be part of a world-model system when it is grounded in observations, actions,
+and feedback and when its predictive state is tested under intervention.
+
+
+\section{One mathematical spine for the three model classes}
+\label{sec:unification}
+
+The common object is a conditional transition or response law:
+\begin{equation}\label{eq:three-laws}
+\begin{aligned}
+\text{language model:}\quad
+&p_\theta(u_{t+1}\mid u_{\le t}),\\
+\text{scientific foundation model:}\quad
+&\mathsf P_\theta(\dd u\mid C_n,f_*),
+\quad u=\cS_Wf_*,\\
+\text{world model:}\quad
+&\widehat P_\theta(\dd y_{t+1}\mid h_t,a_t).
+\end{aligned}
+\end{equation}
+All three amortize prediction over a distribution of related situations.  They
+differ in what is represented, what information is supplied at deployment,
+and which downstream stability statement is required.
+
+\paragraph{\textbf{Representation.}}
+An LLM discretizes text into tokens.  A scientific model discretizes functions,
+meshes, graphs, sensors, and equations.  A world model compresses observation
+histories into predictive latent states.  Representation error is therefore
+task dependent and can remove information before learning begins.
+
+\paragraph{\textbf{Conditional target.}}
+The target may be a next-token law, a point solution, an operator value, a
+posterior distribution, a reward, or a decision-sufficient state.  Log loss,
+squared prediction loss, operator norm, conservation error, and control value
+are not interchangeable.
+
+\paragraph{\textbf{Deployment.}}
+Adaptation may occur through a context with fixed weights, through explicit
+symbolic conditioning, through fine-tuning, or through online interaction.
+These mechanisms use different information and require different risk
+definitions.
+
+\paragraph{\textbf{Stability.}}
+For language, generated tokens become future inputs.  For PDE and world models,
+predicted states become future states used by solvers or planners.  In every
+case, a local regression theorem must be paired with a stability or simulation
+argument before it becomes an end-to-end guarantee.
+
+\subsection{Connection to the rest of the course}
+
+\paragraph{\textbf{Part II: attention as an interacting particle system.}}
+Equation~\eqref{eq:attention-empirical-measure} is the exact finite system.
+Part II studies its mean-field, continuous-depth, stability, clustering, and
+inverse-interaction questions while keeping positions and masks as marks.
+
+\paragraph{\textbf{Part III: generative modeling as learned dynamics.}}
+An LLM generates a discrete path by ancestral sampling.  Score, diffusion, and
+flow models generate continuous states by learned ODEs or SDEs.  Part III asks
+how regression error in a learned field controls the resulting law and how
+conditioning produces posterior samples for inverse problems.
+
+\paragraph{\textbf{Part IV: ICL, inverse problems, and operator learning.}}
+The latent-task model in \eqref{eq:general-posterior-predictive} becomes a
+statistical experiment.  Part IV studies context observability, Bayes and
+empirical-Bayes risk, task diversity, the separate roles of $M$ and $n$, and
+the passage from finite vectors to operators at resolutions $(p,q)$.
+
+The resulting learning-theory program is not a universal additive error
+formula.  For each model one must specify:
+\begin{enumerate}[label=(\arabic*)]
+\item the task or environment distribution and the deployment distribution;
+\item the estimand and downstream loss;
+\item the information supplied by pretraining, context, symbols, sensors, and
+actions;
+\item approximation and optimization errors of the architecture;
+\item discretization, rollout, inverse, or planning stability converting local
+prediction into final risk.
+\end{enumerate}
+
+
+\section{Exercises with solutions}
+\label{sec:exercises}
+
+\begin{exercise}[Chain rule with an end token]
+Let $\mathcal V$ contain an end token $\mathtt{EOS}$.  Suppose a random finite
+string has length at most $T$ and, after its first end token, remains at
+$\mathtt{EOS}$.  Show that its law is determined by the next-token conditionals
+and derive \eqref{eq:chain-rule}.  Explain why the end token is needed for a
+normalized law on variable-length strings.
+\end{exercise}
+
+\begin{proof}[Solution]
+For every $u_{1:T}$ with positive probability, repeated conditioning gives
+\[
+ \Prob(U_{1:T}=u_{1:T})
+ =\Prob(U_1=u_1)
+  \prod_{t=2}^T
+  \Prob(U_t=u_t\mid U_{<t}=u_{<t}).
+\]
+This is \eqref{eq:chain-rule}, with the empty prefix used for $t=1$.  Conversely,
+suppose every conditional is normalized and impose the absorbing condition
+\[
+ q(\mathtt{EOS}\mid u_{<t})=1
+ \quad\text{whenever $u_{<t}$ already contains $\mathtt{EOS}$.}
+\]
+Summing the product recursively over $u_T,u_{T-1},\ldots,u_1$ gives one, and
+the absorbing condition restricts its support to padded finite strings.  The
+first $\mathtt{EOS}$ identifies the finite stopping time.  Without an end
+convention, a law on finite strings would also require separate probabilities
+for termination at every prefix.
+\end{proof}
+
+\begin{exercise}[Causality and permutation]
+Prove directly for one attention head that unmasked attention without position
+marks is permutation equivariant.  Then give a two-token example showing that
+adding distinct positional vectors can distinguish $(u_1,u_2)$ from
+$(u_2,u_1)$.
+\end{exercise}
+
+\begin{proof}[Solution]
+Let $A(X)=\softmax(S(X))XV^\top$, with tokens stored as rows and softmax applied
+row-wise.  For a permutation matrix $P$,
+$S(PX)=PS(X)P^\top$ and hence
+\[
+ A(PX)
+ =P\softmax(S(X))P^\top P(XV^\top)
+ =PA(X).
+\]
+For a concrete scalar example, take token embeddings $e_u=1$, $e_v=-1$ and
+positional marks $r_1=1$, $r_2=-1$.  The marked representations of $(u,v)$
+and $(v,u)$ are respectively
+\[
+ X_{uv}=(2,-2)^\top,
+ \qquad
+ X_{vu}=(0,0)^\top.
+\]
+If $P$ exchanges the two rows, then $X_{vu}\ne PX_{uv}$.  Thus even the
+identity pointwise block followed by a fixed-position readout can distinguish
+the two orders.  The point is that positions stay fixed when token contents
+are exchanged; they do not travel with the token permutation.
+\end{proof}
+
+\begin{exercise}[Softmax curvature]
+Derive both identities in \eqref{eq:softmax-gradient}.  Show that the Hessian
+has $\one_K$ in its null space and interpret this invariance.
+\end{exercise}
+
+\begin{proof}[Solution]
+Differentiation gives
+$\partial_{g_j}\ell=p_j-\one_{\{j=y\}}$ and
+$\partial_{g_k}p_j=p_j(\one_{\{j=k\}}-p_k)$, which yields the Hessian.
+Moreover,
+\[
+ (\operatorname{diag}(p)-pp^\top)\one_K
+ =p-p(p^\top\one_K)=p-p=0.
+\]
+Adding the same constant to every logit leaves softmax unchanged, so the loss
+is flat in the direction $\one_K$.
+\end{proof}
+
+\begin{exercise}[The exact three-token learner]
+For Example~\ref{ex:noisy-task}, derive the posterior odds
+\eqref{eq:toy-posterior-odds}, compute the four probabilities in
+\eqref{eq:toy-posterior-values}, and verify that the attention construction in
+Proposition~\ref{prop:toy-attention-bayes} gives the same probabilities.
+\end{exercise}
+
+\begin{proof}[Solution]
+For one observation $y\in\{-1,+1\}$,
+\[
+ \frac{\Prob(Y_i=y\mid W=+1)}{\Prob(Y_i=y\mid W=-1)}
+ =3^y.
+\]
+Conditional independence and equal prior odds give likelihood ratio
+$3^{Y_1+Y_2+Y_3}=3^{S_3}$.  Therefore
+\[
+ \Prob(W=+1\mid Y_{1:3})
+ =\frac{3^{S_3}}{1+3^{S_3}},
+\]
+which gives $27/28,3/4,1/4,1/28$ at $S_3=3,1,-1,-3$.  The attention head
+returns $m=S_3/3$, and its logit difference is
+$3(\log3)m=S_3\log3$.  The two-class softmax converts this logit difference to
+$3^{S_3}/(1+3^{S_3})$, as required.
+\end{proof}
+
+\begin{exercise}[Rollout regimes]
+Under the assumptions of Proposition~\ref{prop:deterministic-rollout}, simplify
+the bound for $L_S<1$, $L_S=1$, and $L_S>1$.  What changes if the one-step error
+at time $j$ is $\delta_j$ rather than a common $\delta$?
+\end{exercise}
+
+\begin{proof}[Solution]
+If $L_S<1$, then
+\[
+ e_k\le\delta\frac{1-L_S^k}{1-L_S}
+ \le\frac{\delta}{1-L_S}.
+\]
+For $L_S=1$, $e_k\le k\delta$.  For $L_S>1$,
+$e_k\le\delta(L_S^k-1)/(L_S-1)$, which can grow exponentially.  If the error
+at step $j$ is $\delta_j$, the recursion becomes
+$e_{j+1}\le L_Se_j+\delta_j$, and induction yields
+\[
+ e_k\le\sum_{j=0}^{k-1}L_S^{k-1-j}\delta_j.
+\]
+Thus early errors receive the largest amplification when $L_S>1$.
+\end{proof}
+
+
+\section{A short reading path}
+
+The following ten papers give a focused path through the three model classes.
+For each one, identify the conditional target, the information supplied at
+deployment, whether the weights change, and the downstream loss.
+\begin{enumerate}[label=\textbf{R\arabic*.},leftmargin=*]
+\item Vaswani et al.~\cite{VaswaniEtAl2017}: the Transformer architecture.
+\item Brown et al.~\cite{BrownEtAl2020}: large-scale autoregressive ICL.
+\item Xie et al.~\cite{XieEtAl2022}: a restricted implicit-Bayes mechanism.
+\item Yang et al.~\cite{YangEtAl2023ICON}: fixed-weight in-context operator
+learning.
+\item Ye et al.~\cite{YeEtAl2024PDEformer}: symbolic--numerical PDE
+pretraining.
+\item Herde et al.~\cite{HerdeEtAl2024Poseidon}: pretrained solution
+operators and fine-tuning.
+\item Ha and Schmidhuber~\cite{HaSchmidhuber2018}: compressed recurrent world
+models.
+\item Hafner et al.~\cite{HafnerEtAl2019Planet}: latent dynamics for planning.
+\item Schrittwieser et al.~\cite{SchrittwieserEtAl2020}: decision-sufficient
+latent dynamics in MuZero.
+\item Bruce et al.~\cite{BruceEtAl2024Genie}: a video-pretrained interactive
+world model.
+\end{enumerate}
+
+
+\begin{thebibliography}{99}
+
+\bibitem{BrownEtAl2020}
+T.~B.~Brown et al.,
+\emph{Language models are few-shot learners},
+Advances in Neural Information Processing Systems \textbf{33} (2020),
+1877--1901.
+\href{https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}
+{NeurIPS proceedings}.
+
+\bibitem{BruceEtAl2024Genie}
+J.~Bruce, M.~Dennis, A.~Edwards, J.~Parker-Holder, Y.~Shi, E.~Hughes,
+M.~Lai, A.~Mavalankar, R.~Steigerwald, C.~Apps, et al.,
+\emph{Genie: Generative interactive environments},
+Proceedings of the 41st International Conference on Machine Learning,
+PMLR \textbf{235} (2024), 4603--4623.
+\href{https://proceedings.mlr.press/v235/bruce24a.html}{PMLR version}.
+
+\bibitem{HaSchmidhuber2018}
+D.~Ha and J.~Schmidhuber,
+\emph{Recurrent world models facilitate policy evolution},
+Advances in Neural Information Processing Systems \textbf{31} (2018).
+\href{https://papers.nips.cc/paper_files/paper/2018/hash/2de5d16682c3c35007e4e92982f1a2ba-Abstract.html}
+{NeurIPS proceedings}.
+
+\bibitem{HafnerEtAl2019Planet}
+D.~Hafner, T.~Lillicrap, I.~Fischer, R.~Villegas, D.~Ha, H.~Lee, and
+J.~Davidson,
+\emph{Learning latent dynamics for planning from pixels},
+Proceedings of the 36th International Conference on Machine Learning,
+PMLR \textbf{97} (2019), 2555--2565.
+\href{https://proceedings.mlr.press/v97/hafner19a.html}{PMLR version}.
+
+\bibitem{HafnerEtAl2020Dreamer}
+D.~Hafner, T.~Lillicrap, J.~Ba, and M.~Norouzi,
+\emph{Dream to control: Learning behaviors by latent imagination},
+International Conference on Learning Representations, 2020.
+\href{https://openreview.net/forum?id=S1lOTC4tDS}{OpenReview version}.
+
+\bibitem{HerdeEtAl2024Poseidon}
+M.~Herde, B.~Raoni\'c, T.~Rohner, R.~K\"appeli, R.~Molinaro,
+E.~de B\'ezenac, and S.~Mishra,
+\emph{Poseidon: Efficient foundation models for PDEs},
+Advances in Neural Information Processing Systems \textbf{37} (2024).
+\href{https://proceedings.neurips.cc/paper_files/paper/2024/hash/84e1b1ec17bb11c57234e96433022a9a-Abstract-Conference.html}
+{NeurIPS proceedings}.
+
+\bibitem{HoffmannEtAl2022}
+J.~Hoffmann et al.,
+\emph{Training compute-optimal large language models},
+Advances in Neural Information Processing Systems \textbf{35} (2022),
+30016--30030.
+\href{https://proceedings.neurips.cc/paper_files/paper/2022/hash/c1e2faff6f588870935f114ebe04a3e5-Abstract-Conference.html}
+{NeurIPS proceedings}.
+
+\bibitem{KaplanEtAl2020}
+J.~Kaplan, S.~McCandlish, T.~Henighan, T.~B.~Brown, B.~Chess, R.~Child,
+S.~Gray, A.~Radford, J.~Wu, and D.~Amodei,
+\emph{Scaling laws for neural language models},
+\href{https://arxiv.org/abs/2001.08361}{arXiv:2001.08361}, 2020.
+
+\bibitem{LiuEtAl2024PROSE}
+Y.~Liu, Z.~Zhang, and H.~Schaeffer,
+\emph{PROSE: Predicting multiple operators and symbolic expressions using
+multimodal Transformers},
+Neural Networks \textbf{180} (2024), 106707.
+\href{https://doi.org/10.1016/j.neunet.2024.106707}
+{doi:10.1016/j.neunet.2024.106707}.
+
+\bibitem{OuyangEtAl2022}
+L.~Ouyang et al.,
+\emph{Training language models to follow instructions with human feedback},
+Advances in Neural Information Processing Systems \textbf{35} (2022),
+27730--27744.
+\href{https://arxiv.org/abs/2203.02155}{arXiv:2203.02155}.
+
+\bibitem{SchrittwieserEtAl2020}
+J.~Schrittwieser et al.,
+\emph{Mastering Atari, Go, chess and shogi by planning with a learned model},
+Nature \textbf{588} (2020), 604--609.
+\href{https://doi.org/10.1038/s41586-020-03051-4}
+{doi:10.1038/s41586-020-03051-4}.
+
+\bibitem{SennrichEtAl2016}
+R.~Sennrich, B.~Haddow, and A.~Birch,
+\emph{Neural machine translation of rare words with subword units},
+Proceedings of the 54th Annual Meeting of the Association for Computational
+Linguistics (2016), 1715--1725.
+\href{https://aclanthology.org/P16-1162/}{ACL Anthology}.
+
+\bibitem{VaswaniEtAl2017}
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N.~Gomez,
+\L.~Kaiser, and I.~Polosukhin,
+\emph{Attention is all you need},
+Advances in Neural Information Processing Systems \textbf{30} (2017),
+5998--6008.
+\href{https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html}
+{NeurIPS proceedings}.
+
+\bibitem{XieEtAl2022}
+S.~M.~Xie, A.~Raghunathan, P.~Liang, and T.~Ma,
+\emph{An explanation of in-context learning as implicit Bayesian inference},
+International Conference on Learning Representations, 2022.
+\href{https://openreview.net/forum?id=RdJVFCHjUMI}{OpenReview version}.
+
+\bibitem{YangEtAl2023ICON}
+L.~Yang, S.~Liu, T.~Meng, and S.~J.~Osher,
+\emph{In-context operator learning with data prompts for differential equation
+problems},
+Proc. Natl. Acad. Sci. USA \textbf{120} (2023), no.~39, e2310142120.
+\href{https://doi.org/10.1073/pnas.2310142120}
+{doi:10.1073/pnas.2310142120}.
+
+\bibitem{YeEtAl2024PDEformer}
+Z.~Ye, X.~Huang, L.~Chen, Z.~Liu, B.~Wu, H.~Liu, Z.~Wang, and B.~Dong,
+\emph{PDEformer-1: A foundation model for one-dimensional partial differential
+equations},
+\href{https://arxiv.org/abs/2407.06664}{arXiv:2407.06664}, 2024.
+
+\end{thebibliography}
+
+\end{document}

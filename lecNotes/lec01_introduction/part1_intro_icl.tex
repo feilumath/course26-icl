@@ -1,0 +1,263 @@
+% !TeX program = pdflatex
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}
+\setbeamercovered{transparent}
+
+\setbeamertemplate{footline}{%
+  \hfill\insertframenumber\,/\,\inserttotalframenumber\hspace{2mm}\vspace{2mm}%
+}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{amsmath,amssymb,mathtools,mathrsfs,bm,array}
+\usepackage{bbm}
+\usepackage{hyperref}
+
+\definecolor{feiblue}{RGB}{22,78,128}
+\definecolor{feigreen}{RGB}{45,110,62}
+\definecolor{feired}{RGB}{145,48,48}
+\definecolor{feilight}{RGB}{245,247,250}
+
+\setbeamercolor{titlelike}{fg=white}
+\setbeamercolor{frametitle}{fg=white,bg=feiblue}
+\setbeamercolor{block title}{fg=white,bg=feiblue}
+\setbeamercolor{block body}{fg=black,bg=feilight}
+\setbeamercolor{alertblock title}{fg=white,bg=feired}
+\setbeamercolor{alertblock body}{fg=black,bg=red!5}
+\setbeamercolor{exampleblock title}{fg=white,bg=feigreen}
+\setbeamercolor{exampleblock body}{fg=black,bg=green!5}
+
+\AtBeginSection[]{
+\begin{frame}[plain]
+    \vfill
+    \begin{center}
+        {\usebeamerfont{title}\color{feiblue}\insertsectionhead}
+    \end{center}
+    \vfill
+\end{frame}
+}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Pbb}{\mathbb{P}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\one}{\mathbbm{1}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ip}[2]{\left\langle#1,#2\right\rangle}
+\newcommand{\onslidecite}[1]{\par\vspace{0.4ex}\hfill{\scriptsize\color{black!60}#1}}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\softmax}{softmax}
+
+\title{In-Context Learning, Scientific Models, and World Models}
+\subtitle{Mathematics of Scientific Foundation Models: motivation and overview}
+\author{Fei Lu}
+\date{Fall 2026 }
+
+\begin{document}
+
+%======================================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+
+\section{Transformer and Interacting Particle System}
+%----------------------------------------------------------------------
+\begin{frame}{Recall}
+\textbf{Next-Token Conditionals: }
+  Let $U_{1:T} \in \mathcal V^T$ have probability distribution $p_*$. 
+\begin{equation*}
+ p_*(u_{1:T})
+ =\prod_{t=1}^T p_*(u_t\mid u_{<t}),
+ \qquad u_{<t}=(u_1,\ldots,u_{t-1}).
+\end{equation*}
+
+\textbf{Autoregressive model}
+\[
+ p_\theta(\,\cdot\mid u_{<t})\in\cP(\mathcal V),
+ \qquad
+ p_\theta(u_{1:T})
+ =\prod_{t=1}^T p_\theta(u_t\mid u_{<t}).
+\]
+\begin{itemize}
+  \item Transformer representation of $p_\theta(\cdot\mid u_{<t})$.
+  \item Token embeddings: $x_i^0=E_{\rm tok}e_{u_i}+r_i+s_i\in\R^d,
+ \qquad i=1,\ldots,N\leq T$.
+\end{itemize}
+\end{frame}
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Residual Attention + Pointwise MLP = One Block}
+For $H$ heads, a simplified pre-normalized residual block is
+\begin{align*}
+\text{Layer Normalization:} \quad  \bar x_i^\ell
+ &=\operatorname{LN}_\ell(x_i^\ell), \quad  \textcolor{blue}{ z_i^{\ell h}= \mathrm{Attn}(X^{\ell})_i},  \, X = ( \bar x_i^\ell)_{i=1,\ldots,N} \\
+  \text{Multi-Head Attention:}    \quad  \widetilde x_i^\ell
+ &=x_i^\ell+W_O^\ell
+   \operatorname{Concat}(z_i^{\ell1},\ldots,z_i^{\ell H}),\\
+  x_i^{\ell+1}
+ &=\widetilde x_i^\ell+W_2^\ell
+   \sigma\!\left(W_1^\ell
+     \operatorname{LN}'_\ell(\widetilde x_i^\ell)+b_1^\ell\right)+b_2^\ell.
+\end{align*}
+\vspace{-3mm}
+After $L$ layers, $W_{\rm out}\in \R^{K\times d}, b_{\rm out}\in \R^K$ \vspace{-3mm} 
+\[
+ g_i=W_{\rm out}\operatorname{LN}_{\rm out}(x_i^L)+b_{\rm out},
+ \qquad
+ \textcolor{blue}{ p_{\theta}(v\mid u_{\le i})=\frac{e^{(g_i)_v}}
+ {\sum_{w\in\mathcal V}e^{(g_i)_w}}.}
+\]
+\vspace{-3mm}
+\begin{itemize}
+  \item Attention (and multi-head) mixes positions; the MLP acts pointwise.
+  \item Practical Transformers use different architectures, normalization, and activation functions. 
+  \item $\theta = \{Q, K, V, W_O, W_1, W_2, b_1, b_2, W_{\rm out}, b_{\rm out}\}$ all weights in the model.
+\end{itemize}
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{One Attention Head}
+At layer $\ell$, each attention output is 
+\begin{align*}
+ z_i=\sum_{j=1}^i a_{ij}v_j, 
+ \quad \quad 
+  a_{ij}
+ =\frac{\exp(\langle q_i,k_j\rangle/\sqrt{d_k})\,
+            \textcolor{blue}{\one_{\{j\le i\}}}}
+          {\sum_{m=1}^{\textcolor{blue}{i}}\exp(\langle q_i,k_m\rangle/\sqrt{d_k})} 
+ \propto \exp(\langle Qx_i,Kx_j\rangle/\sqrt{d_k}).
+\end{align*}
+For each $i$, $a_{ij}\ge0$ and $\sum_{j\le i}a_{ij}=1$. 
+
+Let $\mu_X^N=N^{-1}\sum_{j=1}^N\delta_{x_j}$. 
+$$ 
+\operatorname{Attn}_\theta(X)_i
+= \frac{
+\sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}Vx_j
+ }{ 
+\sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}
+ } 
+ =  \frac{\displaystyle
+   \int e^{\ip{Qx_i}{Ky}/\sqrt{d_k}}Vy\,\mu_X^N(\dd y)
+ }{\displaystyle
+   \int e^{\ip{Qx_i}{Kz}/\sqrt{d_k}}\,\mu_X^N(\dd z)
+ } .
+ $$   
+
+
+\onslidecite{Vaswani et al. (2017)}
+\end{frame}
+
+
+
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Attention and Interacting Particle System}
+Residual MLP, ignoring other operations, gives
+$$x_i^{\ell+1} = x_i^\ell + W^\ell \mathrm{Attn}_\theta(X)_i $$
+\[
+ \operatorname{Attn}_\theta(X)_i = \frac{
+\sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}Vx_j
+ }{ 
+\sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}
+ } = 
+  \frac{\displaystyle
+   \int e^{\ip{Qx_i}{Ky}/\sqrt{d_k}}Vy\,\mu_X^N(\dd y)
+ }{\displaystyle
+   \int e^{\ip{Qx_i}{Kz}/\sqrt{d_k}}\,\mu_X^N(\dd z)
+ }
+%  = \Phi[\mu_X^N](x_i), 
+ \qquad \mu_X^N=N^{-1}\sum_{j=1}^N\delta_{x_j}. 
+\] 
+Interacting Particle System: given $N$ particles $x_1,\ldots,x_N\in\R^d$,
+\[
+\dot x_i= \frac1N\sum_{j=1}^N b(x_i,x_j) = b[\mu^N_X](x_i),\qquad i=1,\ldots,N, 
+\] 
+
+\begin{itemize}
+  \item Finite-token: $N$ tokens in the sequence.
+  \item Mean-field: $N\to\infty$ with law $\mu_X^N\to\mu$.
+  \item Continuous depth: $L\to\infty$ with $\ell/L\to t\in[0,1]$. 
+\end{itemize}
+\end{frame}
+
+
+%======================================================================
+% \section{In-Context Learning, Scientific Models, and World Models}
+
+
+
+%======================================================================
+\begin{frame}{Reading and References I: Language and ICL}
+\footnotesize
+\begin{thebibliography}{9}
+\bibitem{Vaswani2017}
+A.~Vaswani et al. (2017),
+``Attention Is All You Need,'' \emph{NeurIPS 30}.
+\href{https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html}{Proceedings link}.
+
+\bibitem{Brown2020}
+T.~B.~Brown et al. (2020),
+``Language Models Are Few-Shot Learners,'' \emph{NeurIPS 33}, 1877--1901.
+\href{https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}{Proceedings link}.
+
+\bibitem{Xie2022}
+S.~M.~Xie, A.~Raghunathan, P.~Liang, and T.~Ma (2022),
+``An Explanation of In-Context Learning as Implicit Bayesian Inference,'' \emph{ICLR}.
+\href{https://openreview.net/forum?id=RdJVFCHjUMI}{OpenReview link}.
+
+\bibitem{Ouyang2022}
+L.~Ouyang et al. (2022),
+``Training Language Models to Follow Instructions with Human Feedback,'' \emph{NeurIPS 35}.
+\href{https://arxiv.org/abs/2203.02155}{arXiv:2203.02155}.
+
+
+\end{thebibliography}
+ \end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Reading and References II: Scientific and World Models}
+\scriptsize
+\begin{thebibliography}{9}
+\bibitem{ICON}
+L.~Yang, S.~Liu, T.~Meng, and S.~J.~Osher (2023),
+``In-Context Operator Learning with Data Prompts for Differential Equation Problems,'' \emph{PNAS} 120(39).
+\href{https://doi.org/10.1073/pnas.2310142120}{doi:10.1073/pnas.2310142120}.
+\bibitem{PDEformer}
+Z.~Ye et al. (2024), ``PDEformer-1: A Foundation Model for One-Dimensional Partial Differential Equations,''
+\href{https://arxiv.org/abs/2407.06664}{arXiv:2407.06664}.
+\bibitem{PROSE}
+Y.~Liu, Z.~Zhang, and H.~Schaeffer (2024), ``PROSE,'' \emph{Neural Networks} 180, 106707.
+\href{https://doi.org/10.1016/j.neunet.2024.106707}{doi link}.
+\bibitem{Poseidon}
+M.~Herde et al. (2024), ``Poseidon: Efficient Foundation Models for PDEs,'' \emph{NeurIPS 37}.
+\href{https://proceedings.neurips.cc/paper_files/paper/2024/hash/84e1b1ec17bb11c57234e96433022a9a-Abstract-Conference.html}{Proceedings link}.
+\bibitem{WorldModels}
+D.~Ha and J.~Schmidhuber (2018), ``Recurrent World Models Facilitate Policy Evolution,'' \emph{NeurIPS 31}.
+\href{https://papers.nips.cc/paper_files/paper/2018/hash/2de5d16682c3c35007e4e92982f1a2ba-Abstract.html}{Proceedings link}.
+\bibitem{PlanetDreamer}
+D.~Hafner et al. (2019), ``Learning Latent Dynamics for Planning from Pixels,''
+\href{https://proceedings.mlr.press/v97/hafner19a.html}{\emph{ICML}};
+D.~Hafner et al. (2020), ``Dream to Control,''
+\href{https://openreview.net/forum?id=S1lOTC4tDS}{\emph{ICLR}}.
+\bibitem{MuZeroGenie}
+J.~Schrittwieser et al. (2020), ``Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model,''
+\href{https://doi.org/10.1038/s41586-020-03051-4}{\emph{Nature} 588};
+J.~Bruce et al. (2024), ``Genie: Generative Interactive Environments,''
+\href{https://proceedings.mlr.press/v235/bruce24a.html}{\emph{ICML}}.
+\end{thebibliography}
+
+\end{frame}
+
+\end{document}

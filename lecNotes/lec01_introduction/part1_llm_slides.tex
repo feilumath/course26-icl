@@ -1,0 +1,502 @@
+% !TeX program = pdflatex
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}
+\setbeamercovered{transparent}
+
+\setbeamertemplate{footline}{%
+  \hfill\insertframenumber\,/\,\inserttotalframenumber\hspace{2mm}\vspace{2mm}%
+}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{amsmath,amssymb,mathtools,mathrsfs,bm,array}
+\usepackage{bbm}
+\usepackage{hyperref}
+
+\definecolor{feiblue}{RGB}{22,78,128}
+\definecolor{feigreen}{RGB}{45,110,62}
+\definecolor{feired}{RGB}{145,48,48}
+\definecolor{feilight}{RGB}{245,247,250}
+
+\setbeamercolor{titlelike}{fg=white}
+\setbeamercolor{frametitle}{fg=white,bg=feiblue}
+\setbeamercolor{block title}{fg=white,bg=feiblue}
+\setbeamercolor{block body}{fg=black,bg=feilight}
+\setbeamercolor{alertblock title}{fg=white,bg=feired}
+\setbeamercolor{alertblock body}{fg=black,bg=red!5}
+\setbeamercolor{exampleblock title}{fg=white,bg=feigreen}
+\setbeamercolor{exampleblock body}{fg=black,bg=green!5}
+
+\AtBeginSection[]{
+\begin{frame}[plain]
+    \vfill
+    \begin{center}
+        {\usebeamerfont{title}\color{feiblue}\insertsectionhead}
+    \end{center}
+    \vfill
+\end{frame}
+}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Pbb}{\mathbb{P}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\one}{\mathbbm{1}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ip}[2]{\left\langle#1,#2\right\rangle}
+\newcommand{\onslidecite}[1]{\par\vspace{0.4ex}\hfill{\scriptsize\color{black!60}#1}}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\softmax}{softmax}
+
+\title{How Do Large Language Models Work?}
+\subtitle{Mathematics of Scientific Foundation Models: motivation and overview}
+\author{Fei Lu}
+\date{Fall 2026 }
+
+\begin{document}
+
+%======================================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%======================================================================
+\section{I. LLM: From Text to a Generated Sample}
+
+
+%----------------------------------------------------------------------
+\begin{frame}{One Short Prompt, Many Possible Continuations}
+\begin{block}{Conditional law}
+A short prompt $c$ rarely determines one continuation.  The mathematical
+object should therefore be a conditional law
+\[
+  p_*(\,\cdot\mid c)\in\cP(\mathcal V).
+\]
+\end{block}
+
+\begin{exampleblock}{Questions}
+\begin{enumerate}
+\item What conditional law is present in the data distribution?
+\item How can one fixed Transformer evaluate a rich map $c\mapsto p_\theta(\cdot\mid c)$?
+\item How does a decoding rule turn that law into one realized continuation?
+\item How many conditional laws can a finite Transformer represent? ...
+\end{enumerate}
+\end{exampleblock}
+
+\vspace{-0.5ex}
+The empirical surprise of large-scale prompting is that changing $c$ can also
+change the apparent task, while the model weights remain fixed.
+\onslidecite{Brown et al. (2020)}
+\end{frame}
+
+\subsection{Token representation and next-token law}
+%----------------------------------------------------------------------
+\begin{frame}{}
+\begin{center}
+  {\Large  Text $\to$ Tokens $\to$ Causal Hidden States $\to$ Next-Token Law \\
+  $\to$ Loss and Training $\to$ autoregressive generation}
+
+  \vspace{6mm}
+\begin{minipage}{0.92\textwidth}
+\begin{itemize}
+\item \textbf{Representation:} raw strings become finite token sequences.
+\item \textbf{Computation:} causal attention maps a prefix to hidden states.
+\item \textbf{Statistical target:} logits parameterize a next-token law.
+\item \textbf{Learning:} cross-entropy fits that conditional law from data.
+\item \textbf{Generation:} a decoding rule recursively samples or selects tokens.
+\end{itemize}
+\end{minipage}
+\end{center}
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Tokenization Chooses the Finite State Space}
+Let $\mathcal V$ be a finite vocabulary, $K=|\mathcal V|$.  A tokenizer is a
+deterministic map
+\[
+ \operatorname{Tok}:\{\text{strings}\}
+ \longrightarrow \bigcup_{T\ge 1}\mathcal V^T.
+\]
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{A Language Model Is a Product of Next-Token Conditionals}
+Fix a horizon $T$ and let $U_{1:T} \in \mathcal V^T$ have probability distribution $p_*$. 
+\begin{equation*}
+ p_*(u_{1:T})
+ =\prod_{t=1}^T p_*(u_t\mid u_{<t}),
+ \qquad u_{<t}=(u_1,\ldots,u_{t-1}).
+\end{equation*}
+
+\begin{block}{Autoregressive model}
+A parameter $\theta$ specifies
+\[
+ p_\theta(\,\cdot\mid u_{<t})\in\cP(\mathcal V),
+ \qquad
+ p_\theta(u_{1:T})
+ =\prod_{t=1}^T p_\theta(u_t\mid u_{<t}).
+\]
+\end{block}
+\begin{itemize}
+  \item The learned object is a conditional probability distribution $p_\theta$.
+  \item  Decoding, sampling, and search are subsequent decisions made from that vector.
+\end{itemize}
+\end{frame}
+
+
+
+\subsection{Loss function, model architecture, and training}
+%----------------------------------------------------------------------
+\begin{frame}{The loss function}
+
+To fit a model $p_\theta$ to data and estimate the population law $p_*$, define the population log-loss
+\[
+ \mathcal L(q)=\E_{p_*}\!\left[-\sum_{t=1}^T
+     \log q(U_t\mid U_{<t})\right],
+\]
+\begin{itemize}
+  \item The population law $p_*$ is unknown; use empirical approximation.
+  \item It is the expected negative log-likelihood of the model $q$ under the true law $p_*$.
+\end{itemize}
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Population Log-Loss and KL Divergence}
+\begin{block}{Exact population identity}
+For any admissible conditional law $q$,
+\[
+ \mathcal L(q)-\mathcal L(p_*)
+ =\sum_{t=1}^T\E\!\left[
+  \KL\!\left(p_*(\cdot\mid U_{<t})\,\middle\|\,
+             q(\cdot\mid U_{<t})\right)
+ \right]\ge 0.
+\]
+Equality holds iff the conditionals agree $p_*$-a.s. at every predicted position.
+\end{block}
+\begin{enumerate}
+\item Condition on $U_{<t}$ and add and subtract
+$-\log p_*(U_t\mid U_{<t})$.
+\item Recall KL divergence: $\KL(p\|q)=\E_p[\log(p/q)]$.
+\end{enumerate}
+
+
+\begin{alertblock}{It does not prove}
+that a finite Transformer contains $p_*$; that a finite data identifies it;
+that a nonconvex optimizer finds the best parameter, or ....
+\end{alertblock}
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Embeddings Carry Content, Position, Role}
+For tokens $u_1,\ldots,u_N$, initialize
+\[
+ x_i^0=E_{\rm tok}e_{u_i}+r_i+s_i\in\R^d,
+ \qquad i=1,\ldots,N.
+\]
+$N$ is typically less than or equal to $T$.  
+\begin{center}
+\begin{tabular}{c|c|c}
+term & information & mathematical role \\
+\hline
+$E_{\rm tok}\in \R^{d\times K}$ & token embedding matrix &  \\
+$e_{u_i}\in \R^K$ & token vector &  \\
+$r_i$ & position & distinguishes order and distance \\
+$s_i$ & role/modality & marks user, assistant, field, sensor, etc.
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item Masks, positions, and roles: break permutation symmetry in the attention map (later lectures). 
+
+  
+\end{itemize}
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{One Causal Attention Head}
+At layer $\ell$, let
+\[
+ q_i=Q\bar x_i^\ell,\qquad k_j=K\bar x_j^\ell,
+ \qquad v_j=V\bar x_j^\ell.
+\]
+The masked weights and head output are
+\begin{align*}
+ a_{ij}
+ &=\frac{\exp(\langle q_i,k_j\rangle/\sqrt{d_k})\,
+            \textcolor{blue}{\one_{\{j\le i\}}}}
+          {\sum_{m=1}^{\textcolor{blue}{i}}\exp(\langle q_i,k_m\rangle/\sqrt{d_k})},\\
+ z_i&=\sum_{j=1}^i a_{ij}v_j.
+\end{align*}
+
+For each $i$, $a_{ij}\ge0$ and $\sum_{j\le i}a_{ij}=1$; hence $z_i$ lies in
+the convex hull of the visible value vectors.
+
+$$ \operatorname{Att}_\theta(X)_i=\sum_{j=1}^N a_{ij}Vx_j,\qquad a_{ij}\propto \exp(\langle Qx_i,Kx_j\rangle/\sqrt{d_k}).$$   
+\onslidecite{Vaswani et al. (2017)}
+\end{frame}
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Residual Attention + Pointwise MLP = One Block}
+For $H$ heads, a simplified pre-normalized residual block is
+\begin{align*}
+\text{Layer Normalization:} \quad  \bar x_i^\ell
+ &=\operatorname{LN}_\ell(x_i^\ell), \quad z_i^{\ell h}= \mathrm{Attn}(X^{\ell}),  \, X = ( \bar x_i^\ell)_{i=1,\ldots,N} \\
+  \text{Multi-Head Attention:}    \quad  \widetilde x_i^\ell
+ &=x_i^\ell+W_O^\ell
+   \operatorname{Concat}(z_i^{\ell1},\ldots,z_i^{\ell H}),\\
+  x_i^{\ell+1}
+ &=\widetilde x_i^\ell+W_2^\ell
+   \sigma\!\left(W_1^\ell
+     \operatorname{LN}'_\ell(\widetilde x_i^\ell)+b_1^\ell\right)+b_2^\ell.
+\end{align*}
+\vspace{-3mm}
+After $L$ layers, $W_{\rm out}\in \R^{K\times d}, b_{\rm out}\in \R^K$ \vspace{-3mm} 
+\[
+ g_i=W_{\rm out}\operatorname{LN}_{\rm out}(x_i^L)+b_{\rm out},
+ \qquad
+ p_{\theta}(v\mid u_{\le i})=\frac{e^{(g_i)_v}}
+ {\sum_{w\in\mathcal V}e^{(g_i)_w}}.
+\]
+\vspace{-3mm}
+\begin{itemize}
+  \item Attention (and multi-head) mixes positions; the MLP acts pointwise.
+  \item Practical Transformers use different architectures, normalization, and activation functions. 
+  \item $\theta = \{Q, K, V, W_O, W_1, W_2, b_1, b_2, W_{\rm out}, b_{\rm out}\}$ all weights in the model.
+\end{itemize}
+
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{ Training and Sequential Generation}
+
+For a corpus $\cD_{\rm pre}=\{u_{1:T_r}^{(r)}\}_{r=1}^R$ with
+$S=\sum_rT_r$, training minimizes
+\[
+ \widehat{\mathcal L}_S(\theta)
+ =-\frac1S\sum_{r=1}^R\sum_{t=1}^{T_r}
+ \log p_\theta\!\left(u_t^{(r)}\mid u_{<t}^{(r)}\right).
+\]
+\begin{itemize}
+  \item All positions of a document are processed in parallel. 
+  \item Parallel training and sequential generation are compatible. 
+  \item Optimization is nonconvex and may not find the global minimum. ... 
+\end{itemize}
+
+\end{frame}
+
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Softmax Gradient = Prediction $-$ Observation}
+For logits $g\in\R^K$, target $y\in \{1,\ldots,K\}$, and $p=\softmax(g) = \frac{e^g}{\sum_j e^{g_j}}$,
+\[
+ \ell(g;y)= -\log p_y  
+ =  -g_y+\log\sum_{j=1}^K e^{g_j}.
+\]
+
+\begin{block}{Exact local derivatives}
+\[
+ \nabla_g\ell(g;y)=p-e_y,
+ \qquad
+ \nabla_g^2\ell(g;y)=\operatorname{diag}(p)-pp^\top\succeq0.
+\]
+\[
+ a^\top\nabla_g^2\ell\,a
+ =\operatorname{Var}_{J\sim p}(a_J)\ge0, \quad \forall a\in\R^K.
+\]
+\end{block}
+\begin{itemize}
+  \item The gradient is the difference between the predicted probability and the observed class.
+  \item The Hessian is a covariance matrix, hence positive semidefinite. EXE. 
+  \item The token loss is convex in $g$, but not convex in the parameter $\theta$.
+\end{itemize}
+
+\end{frame}
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Supervised Learning of Conditional Laws}
+Each observed pair (prefix)
+\[
+  (U_{<t},U_t)
+\]
+is a conditional prediction problem, and one document supplies many such pairs.
+
+\begin{block}{Empirical risk versus population risk}
+\[
+ \widehat{\mathcal L}_S(\theta)
+ \quad\hbox{approximates}\quad
+ \mathcal L(p_\theta)
+ =\E_{p_*}\!\left[-\sum_{t=1}^T
+     \log p_\theta(U_t\mid U_{<t})\right].
+\]
+\end{block}
+\begin{itemize}
+  \item  The prefixes within a document are dependent, not i.i.d. samples. 
+  \item  $p_{\widehat \theta}$ aims to approximate $p_*$. 
+  \item  The observed corpus need not be sample from one fixed law $p_*$. 
+\end{itemize} 
+Learning theory must specify the data process, model class, dependence, and
+deployment distribution before assigning a generalization rate. 
+\end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Autoregressive Sampling Closes the Loop}
+Given a prompt $c=u_{1:N}$, repeat
+\[
+ U_{N+t}\sim p_\theta(\,\cdot\mid U_{1:N+t-1}).
+\]
+Then the generated continuation has exactly the product law
+\[
+ \Pbb_\theta(U_{N+1:N+T}=y_{1:T}\mid c)
+ =\prod_{t=1}^T p_\theta(y_t\mid c,y_{<t}).
+\]
+
+\begin{itemize}
+  \item The chain has closed: text $\to$ law $\to$ loss $\to$ a recursively generated sample. 
+\item Post-processing, reranking, and feedback control, reinforcment learning are often used to improve quality. 
+\end{itemize}
+
+\end{frame}
+
+
+%----------------------------------------------------------------------
+\begin{frame}{Base Model, Instruction Tuning, Preference Tilt}
+\begin{center}
+pretraining on text
+$\longrightarrow$
+instruction tuning on prompt--response pairs
+$\longrightarrow$
+preference optimization
+\end{center}
+
+\begin{block}{Example: an idealized preference stage}
+For base response law $p_\theta(\cdot\mid c)$ and reward $r(c,y)$,
+\[
+ \sup_{\pi(\cdot \mid c)}\left\{\E_\pi[r(c,Y)]
+ -\beta\KL\bigl(\pi(\cdot\mid c)\|p_0(\cdot\mid c)\bigr)\right\}
+\]
+has optimizer
+\[
+ \pi^*(y\mid c)=
+ \frac{p_\theta(y\mid c)e^{r(c,y)/\beta}}
+      {\E_{p_\theta(\cdot\mid c)}[e^{r(c,Y)/\beta}]}.
+\]
+\end{block}
+
+\onslidecite{Ouyang et al. (2022)}
+\end{frame}
+
+
+
+% %----------------------------------------------------------------------
+% \begin{frame}{Attention and Interacting Particle System}
+
+% Interacting Particle System: given $N$ particles $x_1,\ldots,x_N\in\R^d$,
+% \[
+% \dot x_i= \frac1N\sum_{j=1}^N b(x_i,x_j) = b[\mu^N_X](x_i),\qquad i=1,\ldots,N, 
+% \] 
+% where $\mu_X^N=N^{-1}\sum_{j=1}^N\delta_{x_j}$. 
+
+% For one unmasked head attention with $N$ tokens, the output is
+% \[
+%  \operatorname{Att}_\theta(X)_i = \frac{
+% \sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}Vx_j
+%  }{ 
+% \sum_{j=1}^N e^{\langle Qx_i,Kx_j\rangle/\sqrt{d_k}}
+%  } = \Phi[\mu_X^N](x_i).
+% \]
+
+
+% \begin{itemize}
+%   \item Finite-token: $N$ tokens in the sequence.
+%   \item Mean-field: $N\to\infty$ with law $\mu_X^N\to\mu$.
+%   \item Continuous depth: $L\to\infty$ with $\ell/L\to t\in[0,1]$. 
+% \end{itemize}
+% \end{frame}
+
+
+
+
+
+
+
+%======================================================================
+\begin{frame}{Reading and References I: Language and ICL}
+\footnotesize
+\begin{thebibliography}{9}
+\bibitem{Vaswani2017}
+A.~Vaswani et al. (2017),
+``Attention Is All You Need,'' \emph{NeurIPS 30}.
+\href{https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html}{Proceedings link}.
+
+\bibitem{Brown2020}
+T.~B.~Brown et al. (2020),
+``Language Models Are Few-Shot Learners,'' \emph{NeurIPS 33}, 1877--1901.
+\href{https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}{Proceedings link}.
+
+\bibitem{Xie2022}
+S.~M.~Xie, A.~Raghunathan, P.~Liang, and T.~Ma (2022),
+``An Explanation of In-Context Learning as Implicit Bayesian Inference,'' \emph{ICLR}.
+\href{https://openreview.net/forum?id=RdJVFCHjUMI}{OpenReview link}.
+
+\bibitem{Ouyang2022}
+L.~Ouyang et al. (2022),
+``Training Language Models to Follow Instructions with Human Feedback,'' \emph{NeurIPS 35}.
+\href{https://arxiv.org/abs/2203.02155}{arXiv:2203.02155}.
+
+% \bibitem{Sennrich2016}
+% R.~Sennrich, B.~Haddow, and A.~Birch (2016),
+% ``Neural Machine Translation of Rare Words with Subword Units,'' \emph{ACL}.
+% \href{https://aclanthology.org/P16-1162/}{ACL Anthology link}.
+
+\end{thebibliography}
+ \end{frame}
+
+%----------------------------------------------------------------------
+\begin{frame}{Reading and References II: Scientific and World Models}
+\scriptsize
+\begin{thebibliography}{9}
+\bibitem{ICON}
+L.~Yang, S.~Liu, T.~Meng, and S.~J.~Osher (2023),
+``In-Context Operator Learning with Data Prompts for Differential Equation Problems,'' \emph{PNAS} 120(39).
+\href{https://doi.org/10.1073/pnas.2310142120}{doi:10.1073/pnas.2310142120}.
+\bibitem{PDEformer}
+Z.~Ye et al. (2024), ``PDEformer-1: A Foundation Model for One-Dimensional Partial Differential Equations,''
+\href{https://arxiv.org/abs/2407.06664}{arXiv:2407.06664}.
+\bibitem{PROSE}
+Y.~Liu, Z.~Zhang, and H.~Schaeffer (2024), ``PROSE,'' \emph{Neural Networks} 180, 106707.
+\href{https://doi.org/10.1016/j.neunet.2024.106707}{doi link}.
+\bibitem{Poseidon}
+M.~Herde et al. (2024), ``Poseidon: Efficient Foundation Models for PDEs,'' \emph{NeurIPS 37}.
+\href{https://proceedings.neurips.cc/paper_files/paper/2024/hash/84e1b1ec17bb11c57234e96433022a9a-Abstract-Conference.html}{Proceedings link}.
+\bibitem{WorldModels}
+D.~Ha and J.~Schmidhuber (2018), ``Recurrent World Models Facilitate Policy Evolution,'' \emph{NeurIPS 31}.
+\href{https://papers.nips.cc/paper_files/paper/2018/hash/2de5d16682c3c35007e4e92982f1a2ba-Abstract.html}{Proceedings link}.
+\bibitem{PlanetDreamer}
+D.~Hafner et al. (2019), ``Learning Latent Dynamics for Planning from Pixels,''
+\href{https://proceedings.mlr.press/v97/hafner19a.html}{\emph{ICML}};
+D.~Hafner et al. (2020), ``Dream to Control,''
+\href{https://openreview.net/forum?id=S1lOTC4tDS}{\emph{ICLR}}.
+\bibitem{MuZeroGenie}
+J.~Schrittwieser et al. (2020), ``Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model,''
+\href{https://doi.org/10.1038/s41586-020-03051-4}{\emph{Nature} 588};
+J.~Bruce et al. (2024), ``Genie: Generative Interactive Environments,''
+\href{https://proceedings.mlr.press/v235/bruce24a.html}{\emph{ICML}}.
+\end{thebibliography}
+
+\end{frame}
+
+\end{document}

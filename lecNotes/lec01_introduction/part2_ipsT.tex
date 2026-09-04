@@ -1,0 +1,2352 @@
+\documentclass[11pt]{amsart}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\numberwithin{equation}{section}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+% \theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{exercise}[theorem]{Exercise}
+% \theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cK}{\mathcal{K}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ip}[2]{\left\langle#1,#2\right\rangle}
+\newcommand{\one}{\mathbf{1}}
+\DeclareMathOperator{\Law}{Law}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\diam}{diam}
+\DeclareMathOperator{\diver}{div}
+\DeclareMathOperator{\Id}{Id}
+\DeclareMathOperator{\Lip}{Lip}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\newcommand{\blue}[1]{{\color{blue}#1}}
+\newcommand{\cyan}[1]{{\color{cyan}#1}}
+\newcommand{\red}[1]{{\color{red}#1}}
+
+
+\title{Interacting Particle Systems and Transformers}
+\author{Fei Lu}
+\date{Fall 2026. Disclaimer: the notes are written with the help from chatGPT, and the author takes full responsibility for any errors. If you find any errors, please contact the author at \href{mailto:feilu@math.jhu.edu}{feilu@math.jhu.edu}.}
+
+\begin{document}
+\begin{abstract}
+These notes develop the interacting-particle viewpoint on self-attention.
+The mathematical spine is the passage from finite particle updates to
+measure-valued dynamics, followed by continuous depth, collective behavior,
+stability, and the inverse problem of learning an interaction law.  The notes
+distinguish exact finite-token identities from mean-field and continuous-depth
+approximations, and they state the assumptions under which those approximations
+are justified.  A final discussion connects the common object---a learned
+nonlocal operator on empirical measures---to generative modeling, in-context
+learning, operator learning, optimal transport, inverse problems, and
+architecture design.
+\end{abstract}
+
+\maketitle
+\tableofcontents
+
+\section*{Course thread, prerequisites, and notation}
+For particles or tokens $X^1,\ldots,X^N\in\R^d$, define the empirical measure
+\begin{equation}\label{eq:empirical-measure}
+    \mu^N=\frac1N\sum_{i=1}^N\delta_{X^i}.
+\end{equation}
+It forgets labels but retains the distribution of states, making it the natural
+state variable for permutation-equivariant dynamics.  This loss of labels is a
+feature for exchangeable particle clouds and a limitation for ordered
+sequences.  Positions, particle species, boundary labels, and causal
+information must be retained as \emph{marks}; see
+Section~\ref{sec:self-attention}.
+
+We write $\cP_p(\R^d)$ for probability measures with finite $p$th moment.  If
+$T:\R^d\to\R^m$ is measurable, its pushforward is
+\[
+    T_\#\mu(A)=\mu(T^{-1}(A)),\qquad
+    \int f\,\dd(T_\#\mu)=\int f(T(x))\,\mu(\dd x).
+\]
+For $\mu,\nu\in\cP_1(\R^d)$, the $1$-Wasserstein distance is
+\begin{equation}\label{eq:w1-definition}
+    W_1(\mu,\nu)
+    =\inf_{\pi\in\Gamma(\mu,\nu)}
+      \int_{\R^d\times\R^d}\abs{x-y}\,\pi(\dd x,\dd y),
+\end{equation}
+where $\Gamma(\mu,\nu)$ is the set of couplings.  We use the same notation for a
+measure and its density when no confusion can arise.  All gradients and
+divergences act on the displayed spatial variable.
+
+The sections follow one chain:
+\[
+\begin{split}
+  \text{finite interacting particles}
+  &\longrightarrow \text{Wasserstein transport and gradient flow}\\
+  &\longrightarrow \text{attention as a nonlocal particle update}\\
+  &\longrightarrow \text{continuous depth, clustering, and stability}\\
+  &\longrightarrow \text{learning the interaction from data}.
+\end{split}
+\]
+The prerequisites are It\^o's formula, basic ODE/SDE well-posedness, weak
+convergence of measures, and Gronwall's inequality.  The notes recall the
+specific facts needed from each.  Statements are intentionally finite-horizon
+unless a dissipative hypothesis gives genuine long-time control.
+
+
+\section{Mean-field interacting particle systems}\label{sec:ips}
+\paragraph{\textbf{Key question}}
+What equation describes the limit of the empirical measure of $N$
+interacting particles as $N\to\infty$, and why does the limiting equation
+close?
+
+\subsection{The finite-particle system and its empirical measure}
+Consider $N$ particles in $\R^d$ with pairwise interaction
+$b:\R^d\times\R^d\to\R^d$ and additive Brownian noise:
+\begin{equation}\label{eq:particles}
+    \dd X_t^i=\frac1N\sum_{j=1}^N b(X_t^i,X_t^j)\dd t
+       +\sigma\dd B_t^i,
+    \qquad i=1,\ldots,N.
+\end{equation}
+Here $B^1,\ldots,B^N$ are independent standard Brownian motions in $\R^d$,
+$\sigma\geq0$, and the initial variables $X_0^1,\ldots,X_0^N$ are i.i.d.\ with
+law $\mu_0\in\cP_2(\R^d)$, independently of the Brownian motions.  The case
+$\sigma=0$ is deterministic and $\sigma>0$ is the stochastic system in the Ito sense.
+
+The factor $1/N$ is the mean-field scaling: each pair interaction is weak, but
+each particle feels $N$ interactions.  We include $j=i$ for convenience.  If
+the self-interaction is omitted, the drift changes by
+$N^{-1}b(X_t^i,X_t^i)$, which is lower order under the moment estimates below.
+
+\begin{assumption}[Lipschitz interaction]\label{ass:regular-mf}
+There is a constant $L_b\geq0$ such that
+\[
+  \abs{b(x,y)-b(x',y')}
+  \leq L_b\bigl(\abs{x-x'}+\abs{y-y'}\bigr),
+  \qquad x,x',y,y'\in\R^d.
+\]
+\end{assumption}
+In particular, if $b$ is globally Lipschitz, then it has linear growth:
+\begin{equation}\label{eq:b-linear-growth}
+  \abs{b(x,y)}\leq \abs{b(0,0)}+L_b(\abs{x}+\abs{y}).
+\end{equation}
+One may replace the global Lipschitz assumption with a local Lipschitz assumption plus a linear growth condition, but the global Lipschitz assumption is stronger and easier to use.
+
+\begin{proposition}[Finite-system well-posedness and moments]
+\label{prop:finite-wp}
+Under Assumption~\ref{ass:regular-mf}, \eqref{eq:particles} has a unique global
+strong solution.  For every $T<\infty$,
+\begin{equation}\label{eq:finite-moment}
+  \sup_{N\geq1}\max_{1\leq i\leq N}
+  \E\left[\sup_{0\leq t\leq T}\abs{X_t^i}^2\right]
+  \leq C_T\left(1+\int_{\R^d}\abs{x}^2\mu_0(\dd x)\right),
+\end{equation}
+where $C_T$ may depend on $T,L_b,\abs{b(0,0)},\sigma$, and $d$, but not on
+$N$.
+\end{proposition}
+\begin{proof}
+For $\boldsymbol{x}=(x_1,\ldots,x_N)$, set
+\[
+ F_i^N(\boldsymbol{x})=\frac1N\sum_{j=1}^N b(x_i,x_j),
+ \qquad
+ \norm{\boldsymbol{x}}_N^2=\frac1N\sum_{i=1}^N\abs{x_i}^2.
+\]
+The Lipschitz assumption and Jensen's inequality give
+\[
+ \norm{F^N(\boldsymbol{x})-F^N(\boldsymbol{x}')}{}_N^2
+ \leq 4L_b^2\norm{\boldsymbol{x}-\boldsymbol{x}'}_N^2.
+\]
+Thus the drift of the $Nd$-dimensional SDE is globally Lipschitz, so the
+standard SDE theorem gives a unique global strong solution; see
+\cite[Chapter~5]{KaratzasShreve1991}.  Moreover,
+\eqref{eq:b-linear-growth} implies
+\[
+ \abs{F_i^N(\boldsymbol{x})}^2
+ \leq C\left(1+\abs{x_i}^2+\frac1N\sum_{j=1}^N\abs{x_j}^2\right).
+\]
+Applying the elementary inequality
+$\sup_{r\leq t}\abs{\int_0^r f_s\dd s}^2
+\leq t\int_0^t\abs{f_s}^2\dd s$ to the integral form of
+\eqref{eq:particles} gives, for $t\leq T$,
+\begin{align*}
+ \E\sup_{0\leq r\leq t}\abs{X_r^i}^2
+ &\leq 3\E\abs{X_0^i}^2
+ +3t\int_0^t\E\abs{F_i^N(\boldsymbol X_s)}^2\dd s
+ +3\sigma^2\E\sup_{0\leq r\leq t}\abs{B_r^i}^2\\
+ &\leq 3\E\abs{X_0^i}^2
+ +3T\int_0^t\E\abs{F_i^N(\boldsymbol X_s)}^2\dd s
+ +12d\sigma^2T, 
+\end{align*}
+where in the last step, Doob's $L^2$ maximal inequality (see Theorem \ref{thm:appendix-doob})
+\footnote{TBV: Doob's $L^p$ maximal inequality states that for a continuous martingale $M$ with $M_0=0$ and $p>1$, $\E\sup_{0\leq t\leq T}\abs{M_t}^p\leq (p/(p-1))^p\E\abs{M_T}^p$.  The constant is sharp.  See \cite[Theorem~3.2]{KaratzasShreve1991}. Alternatively,  this is also the Brownian special case of the Burkholder--Davis--Gundy
+inequality.  No stochastic-integral estimate is needed here because the
+integral equation contains the additive term $\sigma B_t^i$ directly.  If one instead applies It\^o's formula to $\abs{X_t^i}^2$, then BDG is needed to control the martingale $2\sigma\int_0^t X_s^i\cdot\dd B_s^i$. Also, when the noise is multiplicative, then BDG can control the martingale term in the It\^o integral. }
+gives
+\[
+ \E\sup_{0\leq r\leq t}\abs{B_r^i}^2
+ \leq 4\E\abs{B_t^i}^2=4dt.
+\] 
+
+Using the displayed bound for $F_i^N$, averaging over $i$, and setting
+\[
+ A_N(t):=\frac1N\sum_{i=1}^N
+ \E\sup_{0\leq r\leq t}\abs{X_r^i}^2,
+\]
+we obtain
+\[
+ A_N(t)
+ \leq C_T\left(1+\int\abs{x}^2\mu_0(\dd x)
+ +\int_0^t A_N(s)\dd s\right).
+\]
+Gronwall's inequality gives a bound independent of $N$.  Exchangeability of
+the system turns the averaged estimate into \eqref{eq:finite-moment}.
+\end{proof}
+
+Singular forces such as Coulomb kernels are not covered by
+Assumption~\ref{ass:regular-mf}; their well-posedness and mean-field limits
+require estimates adapted to the singularity.
+
+\begin{remark}[Singular interactions remain an active area] TBV. 
+The Lipschitz coupling used in this section breaks down for Coulomb, Riesz,
+Biot--Savart, and strongly attractive kernels, and there is no single
+replacement covering all of them.  Several complementary methods have
+developed rapidly.  Jabin and Wang proved quantitative propagation of chaos
+in relative entropy for stochastic systems with
+$\dot W^{-1,\infty}$ interaction kernels, a class that includes the
+Biot--Savart kernel for the two-dimensional viscous vortex model
+\cite{JabinWang2018}.  Bresch, Jabin, and Wang combined entropy and modulated
+free energy to treat singular attractive interactions and obtained a
+quantitative particle derivation of the Patlak--Keller--Segel equation in the
+optimal subcritical regime \cite{BreschJabinWang2023}.  More recent results
+include strong trajectory-level propagation of chaos for singular
+$L^p$ interactions \cite{HaoRocknerZhang2024}, sharp uniform-in-time
+mean-field convergence for periodic Riesz flows
+\cite{ChodronRosenzweigSerfaty2025}, and sharp local chaos estimates for
+$\dot W^{-1,\infty}$ interactions \cite{Wang2026}.  These theorems rely on
+diffusion strength, sign, dimension, integrability, or modulated-energy
+structure; none makes a generic singular force as routine as the globally
+Lipschitz model above.
+\end{remark}
+
+
+\subsection{The weak equation for the empirical measure}
+
+The empirical measure of the particle system is
+\begin{equation}\label{eq:empirical-measure-time}
+    \mu_t^N:=\frac1N\sum_{i=1}^N\delta_{X_t^i}.
+\end{equation}
+For a measure $\mu$, use the compact notation
+\begin{equation}\label{eq:b-mu}
+    b[\mu](x):=\int_{\R^d}b(x,y)\,\mu(\dd y).
+\end{equation}
+Then the drift of particle $i$ is exactly
+$b[\mu_t^N](X_t^i)$.  This identity is the first closure step: the other
+particles enter the equation for $X_t^i$ only through $\mu_t^N$.
+
+
+For $\varphi\in C_b^2(\R^d)$, It\^o's formula for the $i$th particle gives
+\[
+ \dd\varphi(X_t^i)
+ =\nabla\varphi(X_t^i)\cdot b[\mu_t^N](X_t^i)\dd t
+ +\frac{\sigma^2}{2}\Delta\varphi(X_t^i)\dd t
+ +\sigma\nabla\varphi(X_t^i)\cdot\dd B_t^i.
+\]
+Averaging over $i$ yields the semimartingale identity
+\begin{align}
+    \dd\int\varphi\,\dd\mu_t^N
+    &=\int\left[b[\mu_t^N]\cdot\nabla\varphi
+       +\frac{\sigma^2}{2}\Delta\varphi\right]\dd\mu_t^N\dd t
+       +\dd M_t^{N,\varphi},\label{eq:empirical-weak}\\
+    M_t^{N,\varphi}
+    &=\frac{\sigma}{N}\sum_{i=1}^N
+      \int_0^t\nabla\varphi(X_s^i)\cdot\dd B_s^i.
+      \label{eq:empirical-martingale}
+\end{align}
+For a continuous square-integrable martingale $M$ with $M_0=0$, we write
+$\langle M\rangle_t$ for its predictable quadratic variation: it is the unique increasing predictable process such that
+$M_t^2-\langle M\rangle_t$ is a martingale; see \cite[Chapter~3]{KaratzasShreve1991}. TBV. 
+In particular,
+\[
+ \E\abs{M_t}^2=\E\langle M\rangle_t.
+\]
+The independence of the Brownian motions and the stochastic-integral
+quadratic-variation formula yield
+\begin{equation}\label{eq:martingale-bracket}
+  \left\langle M^{N,\varphi}\right\rangle_t
+  =\frac{\sigma^2}{N^2}\sum_{i=1}^N
+    \int_0^t\abs{\nabla\varphi(X_s^i)}^2\dd s
+  \leq\frac{\sigma^2t}{N}\norm{\nabla\varphi}_\infty^2.
+\end{equation}
+Thus the stochastic fluctuation of any fixed smooth observable is of size
+$N^{-1/2}$.  Notice that eqref{eq:martingale-bracket} depends on the test function, so it is not a metric between the entire empirical measure and its limit.
+
+For simplicity, we can write the weak-form equation as
+\[
+ \partial_t \mu_t^N = -\diver\bigl(\mu_t^N b[\mu_t^N]\bigr)  + \frac{\sigma^2}{2} \Delta \mu_t^N + \text{martingale noise}.
+\]
+
+%%%%%%%%%%%%%% ============ 
+\subsection{The nonlinear limit and its well-posedness}
+The candidate limiting process is the McKean--Vlasov SDE with additive noise:
+\begin{equation}\label{eq:mv-sde}
+  \dd\overline X_t=b[\mu_t](\overline X_t)\dd t+\sigma\dd B_t,
+  \qquad \mu_t=\Law(\overline X_t),\qquad
+  \Law(\overline X_0)=\mu_0, 
+\end{equation}
+where $ b[\mu](x)=\int_{\R^d}b(x,y)\,\mu(\dd y)$. 
+It is nonlinear in law: the unknown law $\mu_t$ enters the drift that generates that same law. 
+
+Next, we prove well-posedness of the McKean--Vlasov SDE.  The proof is based on a fixed-point construction and its propagation-of-chaos consequence are classical; see \cite{Sznitman1991} and \cite{CarmonaDelarue2018}. We start from a bound on the drift in terms of the Wasserstein distance between measures. 
+For $\mu,\nu\in\cP_2(\R^d)$, let
+\[
+ W_2(\mu,\nu)^2
+ :=\inf_{\pi\in\Gamma(\mu,\nu)}
+   \int_{\R^d\times\R^d}\abs{x-y}^2\pi(\dd x,\dd y), 
+\]
+where $\Gamma(\mu,\nu):= \{ \pi \in \mathcal{P}(\R^d \times \R^d) : \pi(\cdot, \R^d) = \mu, \pi(\R^d, \cdot) = \nu \}$ is the set of all couplings of $\mu$ and $\nu$. 
+
+
+\begin{lemma}[Lipschitz continuity of the mean-field drift]
+\label{lem:measure-drift-lipschitz}
+Under Assumption~\ref{ass:regular-mf}, for all
+$x,x'\in\R^d$ and $\mu,\nu\in\cP_2(\R^d)$,
+\begin{equation}\label{eq:measure-drift-lipschitz}
+ \abs{b[\mu](x)-b[\nu](x')}
+ \leq L_b\bigl(\abs{x-x'}+W_2(\mu,\nu)\bigr).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Let $\pi\in\Gamma(\mu,\nu)$ be any coupling.  Since the first and second
+marginals of $\pi$ are $\mu$ and $\nu$, respectively,
+\[
+ b[\mu](x)-b[\nu](x')
+ =\int_{\R^d\times\R^d}
+   \bigl(b(x,y)-b(x',y')\bigr)\,\pi(\dd y,\dd y').
+\]
+The triangle inequality and Assumption~\ref{ass:regular-mf} give
+\begin{align*}
+ \abs{b[\mu](x)-b[\nu](x')}
+ &\leq L_b\int
+   \bigl(\abs{x-x'}+\abs{y-y'}\bigr)\,\pi(\dd y,\dd y')\\
+ &=L_b\abs{x-x'}
+   +L_b\int\abs{y-y'}\,\pi(\dd y,\dd y')\\
+ &\leq L_b\abs{x-x'}
+   +L_b\left(\int\abs{y-y'}^2\,\pi(\dd y,\dd y')\right)^{1/2},
+\end{align*}
+where the last step is Cauchy--Schwarz and $\pi$ has total mass one.
+Taking the infimum over $\pi\in\Gamma(\mu,\nu)$ proves
+\eqref{eq:measure-drift-lipschitz}.
+\end{proof}
+
+\begin{theorem}[Well-posedness of the McKean--Vlasov SDE]
+\label{thm:mv-wellposed}
+Under Assumption~\ref{ass:regular-mf}, \eqref{eq:mv-sde} has a unique global
+strong solution.  For every $T<\infty$,
+\begin{equation}\label{eq:mv-moment}
+ \E\left[\sup_{0\leq t\leq T}\abs{\overline X_t}^2\right]
+ \leq C_T\left(1+\int_{\R^d}\abs{x}^2\mu_0(\dd x)\right).
+\end{equation}
+\end{theorem}
+\begin{proof}   The proof is standard, but we include it for completeness and to highlight the role of the Wasserstein distance in the contraction argument. 
+
+\textbf{Part I. Strong well-posedness.}  We first prove the strong well-posedness by using a fixed-point argument on the space of continuous curves of measures. 
+Fix $h\in (0,T]$ and let
+\[
+ \mathcal C_h=\left\{m\in C([0,h];\cP_2(\R^d)):m_0=\mu_0\right\},
+ \qquad d_h(m,n)=\sup_{0\leq t\leq h}W_2(m_t,n_t).
+\]
+One can verify that $\mathcal C_h$ with $d_h$ is a complete metric space.  For a deterministic curve $m\in\mathcal
+C_h$, the SDE
+\begin{equation}\label{eq:frozen-law-sde}
+ \dd X_t^m=b[m_t](X_t^m)\dd t+\sigma\dd B_t,
+ \qquad X_0^m=X_0,\quad\Law(X_0)=\mu_0,
+\end{equation}
+has a unique strong solution because its drift is globally Lipschitz in $x$
+and has linear growth.  Define
+$$\Phi(m)_t=\Law(X_t^m).$$  
+
+We will show that $\Phi$ is a contraction on $\mathcal C_h$ for sufficiently small $h$ in two steps. 
+
+\paragraph{\textbf{Step 1. $\Phi$ maps $\mathcal C_h$ into itself.}}  We need to show that $\Phi(m)\in\mathcal C_h$, i.e., that $\Phi(m)_0=\mu_0$ and that $t\mapsto \Phi(m)_t$ is continuous in the Wasserstein-2 metric.
+The moment estimate for
+\eqref{eq:frozen-law-sde} and mean-square continuity of $X^m$ show that
+$\Phi(m)\in\mathcal C_h$.  We now verify these two facts.
+
+Since $m\in C([0,h];\cP_2(\R^d))$, we have
+\[
+ K_m:=\sup_{0\leq t\leq h}
+ \int_{\R^d}\abs{y}^2m_t(\dd y)<\infty.
+\]
+Indeed, 
+$\bigl(\int\abs{y}^2m_t(\dd y)\bigr)^{1/2}
+=W_2(m_t,\delta_0)$ is continuous in $t$.  By
+\eqref{eq:b-linear-growth} and Cauchy--Schwarz,
+\begin{equation}\label{eq:frozen-drift-growth}
+ \abs{b[m_t](x)}^2 % = \abs{\int b(x,y)m_t(\dd y)}^2 
+ \leq 2\abs{b(0,0)}^2+2L_b^2\left(\abs{x}+\int\abs{y}m_t(\dd y)\right)^2
+ \leq C\left(1+\abs{x}^2+K_m\right).
+\end{equation}
+The integral form of \eqref{eq:frozen-law-sde}, the same maximal estimate used
+in Proposition~\ref{prop:finite-wp}, and
+\eqref{eq:frozen-drift-growth} give
+\[
+ Q_m(t):=\E\sup_{0\leq r\leq t}\abs{X_r^m}^2
+ \leq C_{h,m}\left(1+\E\abs{X_0}^2\right)
+ +C_h\int_0^tQ_m(s)\dd s.
+\]
+Gronwall's inequality therefore gives
+\begin{equation}\label{eq:frozen-moment}
+ \E\sup_{0\leq t\leq h}\abs{X_t^m}^2
+ \leq C_{h,m}\left(1+\E\abs{X_0}^2\right)<\infty.
+\end{equation}
+For $0\leq s\leq t\leq h$, the increment equation gives
+\begin{align}
+ \E\abs{X_t^m-X_s^m}^2
+ &\leq 2(t-s)\int_s^t\E\abs{b[m_r](X_r^m)}^2\dd r
+      +2d\sigma^2(t-s)\notag\\
+ &\leq C_{h,m}(t-s),\label{eq:frozen-ms-continuity}
+\end{align}
+where \eqref{eq:frozen-drift-growth} and \eqref{eq:frozen-moment} are used in
+the last step.  Thus $X^m$ is mean-square continuous, and the coupling
+$(X_t^m,X_s^m)$ shows
+\[
+ W_2(\Phi(m)_t,\Phi(m)_s)^2
+ \leq\E\abs{X_t^m-X_s^m}^2\longrightarrow0
+ \qquad\text{as }t\to s.
+\]
+Together with $\Phi(m)_0=\mu_0$ and \eqref{eq:frozen-moment}, this proves
+$\Phi(m)\in\mathcal C_h$.
+
+\paragraph{\textbf{Step 2. $\Phi:\mathcal C_h\to\mathcal C_h$ is a contraction.}}
+To prove contraction, let $X^m$ and $X^n$ solve \eqref{eq:frozen-law-sde} for $m$ and $n$ with the same $X_0$ and Brownian motion.  By \eqref{eq:measure-drift-lipschitz}, with
+\[
+ D(t):=\E\left[\sup_{0\leq r\leq t}\abs{X_r^m-X_r^n}^2\right],
+\]
+Cauchy--Schwarz gives, for $t\leq h$,
+\[
+ D(t)
+ \leq 2L_b^2h\int_0^t
+       \left(D(s)+d_h(m,n)^2\right)\dd s.
+\]
+Indeed, if $\Delta_t=X_t^m-X_t^n$, then the common Brownian motion and common
+initial variable cancel, so
+\[
+ \Delta_r=\int_0^r
+ \bigl(b[m_s](X_s^m)-b[n_s](X_s^n)\bigr)\dd s.
+\]
+For every $r\leq t\leq h$, Cauchy--Schwarz in time and
+Lemma~\ref{lem:measure-drift-lipschitz} give
+\begin{align*}
+ \abs{\Delta_r}^2
+ &\leq r\int_0^r
+ \abs{b[m_s](X_s^m)-b[n_s](X_s^n)}^2\dd s\\
+ &\leq 2L_b^2h\int_0^t
+ \left(\abs{\Delta_s}^2+W_2(m_s,n_s)^2\right)\dd s\\
+ &\leq 2L_b^2h\int_0^t
+ \left(\sup_{0\leq u\leq s}\abs{\Delta_u}^2
+       +d_h(m,n)^2\right)\dd s.
+\end{align*}
+Taking the supremum over $r\leq t$ and then expectation proves the stated
+bound for $D(t)$.
+Gronwall's inequality therefore gives
+\begin{equation}\label{eq:phi-contraction}
+ d_h(\Phi(m),\Phi(n))^2
+ = \sup_{0\leq t\leq h}W_2(\Phi(m)_t,\Phi(n)_t)^2
+ \leq \sup_{0\leq t\leq h}D(t)  
+ \leq 2L_b^2h^2e^{2L_b^2h^2}d_h(m,n)^2.
+\end{equation}
+Choose $h$ so that the coefficient on the right is less than one. 
+
+ Banach's fixed-point theorem gives a unique curve $\mu=\Phi(\mu)$ on $[0,h]$; the corresponding $X^\mu$ solves \eqref{eq:mv-sde}.  Repeating the argument on successive intervals of length $h$, with the terminal law from one interval as the initial law for the next, constructs the solution on every finite time interval.
+
+If two solutions are driven by the same $(X_0,B)$, uniqueness of the fixed
+point first gives equality of their law curves.  They then solve the same
+ordinary Lipschitz SDE, so pathwise uniqueness gives equality of the
+processes.
+
+\textbf{Part II. The moment bound.}
+To prove \eqref{eq:mv-moment}, note that the Lipschitz continuity of $b$ and the linear growth condition imply, 
+\[
+ Q(t): =\E[\sup_{0\leq r\leq t}\abs{\overline X_r}^2] \leq C_T\left(1+\E\abs{\overline X_0}^2\right)
+       +C_T\int_0^tQ(s)\dd s,\qquad t\leq T.
+\]
+To derive it, first use the linear growth bound \eqref{eq:b-linear-growth}, Jensen's inequality, and
+$\mu_s=\Law(\overline X_s)$:
+\begin{align}
+ \E\abs{b[\mu_s](\overline X_s)}^2
+ &\leq C\E\left[
+ 1+\abs{\overline X_s}^2
+ +\left(\int\abs{y}\,\mu_s(\dd y)\right)^2\right]\notag\\
+ &\leq C\left(1+\E\abs{\overline X_s}^2
+ +\int\abs{y}^2\mu_s(\dd y)\right)\notag\\
+ &=C\left(1+2\E\abs{\overline X_s}^2\right)
+ \leq C\left(1+Q(s)\right).
+ \label{eq:mv-drift-moment}
+\end{align}
+Next, the integral form of \eqref{eq:mv-sde} $ 
+\overline X_t=\overline X_0+\int_0^t b[\mu_s](\overline X_s)\dd s+\sigma B_t 
+$ gives, for $t\leq T$, 
+\begin{align*}
+ Q(t)
+ &\leq 3\E\abs{\overline X_0}^2
+ +3t\int_0^t\E\abs{b[\mu_s](\overline X_s)}^2\dd s
+ +3\sigma^2\E\sup_{0\leq r\leq t}\abs{B_r}^2\\
+ &\leq 3\E\abs{\overline X_0}^2
+ +3TC\int_0^t(1+Q(s))\dd s+12d\sigma^2T,
+\end{align*}
+where Doob's inequality was used in the last term.  Absorbing the constant
+terms into $C_T$ yields the claimed inequality. Gronwall's inequality gives \eqref{eq:mv-moment}.
+\end{proof}
+
+Taking expectations in It\^o's formula for \eqref{eq:mv-sde}, we have that the law $\mu_t$ solves the weak Fokker--Planck equation, i.e., $(\mu_t)_{0\leq t\leq T}\subset\cP_2(\R^d)$ is continuous in time and satisfies, 
+\begin{equation}\label{eq:mv-weak} 
+\begin{aligned}
+  \partial_t \mu_t & = -\diver\bigl(\mu_t b[\mu_t]\bigr)  + \frac{\sigma^2}{2} \Delta \mu_t, \quad   \Leftrightarrow  \\
+   \int\varphi\,\dd\mu_t-\int\varphi\,\dd\mu_0
+   & =\int_0^t\int\left[
+       b[\mu_s]\cdot\nabla\varphi
+       +\frac{\sigma^2}{2}\Delta\varphi\right]\dd\mu_s\dd s, \quad \forall \varphi\in C_c^\infty(\R^d). 
+\end{aligned}
+\end{equation} 
+If $\mu_t$ has a smooth density $\rho_t$,
+we have the strong form of the nonlinear Fokker--Planck equation
+\begin{equation}\label{eq:mv-fp}
+    \partial_t\rho_t
+    +\diver\bigl(\rho_t b[\rho_t]\bigr)
+    =\frac{\sigma^2}{2}\Delta\rho_t.
+\end{equation}
+The weak formulation remains meaningful when no smooth density exists and is
+therefore the primary equation.
+
+\subsection{Mean-field limit: propagation of chaos}
+The disappearance of the martingale in \eqref{eq:empirical-weak} suggests a
+deterministic limit, but closure also requires replacing
+$b[\mu_t^N]$ by $b[\mu_t]$.  A synchronous coupling makes this precise.
+
+\begin{theorem}[Finite-time propagation of chaos]\label{thm:poc} Let $N\geq 2$. 
+Under Assumption~\ref{ass:regular-mf}, let
+$\overline X^1,\ldots,\overline X^N$ be independent copies of
+\eqref{eq:mv-sde}, with $\overline X_0^i=X_0^i$ and driven by the same $B^i$ as
+$X^i$ in \eqref{eq:particles}.   For every $T<\infty$ there is $C_T$, independent of $N$, such that
+\begin{equation}\label{eq:poc-rate}
+  \max_{1\leq i\leq N}
+  \E\left[\sup_{0\leq t\leq T}
+    \abs{X_t^i-\overline X_t^i}^2\right]\leq\frac{C_T}{N}.
+\end{equation}
+Consequently, for every fixed $k$ and $t\leq T$,
+\begin{equation}\label{eq:k-chaos-rate}
+ W_2^2\left(\Law(X_t^1,\ldots,X_t^k),\mu_t^{\otimes k}\right)
+ \leq \frac{kC_T}{N},
+\end{equation}
+where $W_2$ on the left is computed with the Euclidean norm on $\R^{dk}$.
+\end{theorem}
+\begin{proof}
+Set $\Delta_t^i=X_t^i-\overline X_t^i$ and let
+\[
+ D(t)=\max_{1\leq i\leq N}
+ \E\left[\sup_{0\leq r\leq t}\abs{\Delta_r^i}^2\right].
+\]
+
+The Brownian terms cancel in the
+synchronous coupling.  Add and subtract
+$N^{-1}\sum_j b(\overline X_t^i,\overline X_t^j)$ to write
+\begin{equation}\label{eq:coupling-error-decomposition}
+ \Delta_t^i=\int_0^t\left(A_s^i+R_s^i\right)\dd s,
+\end{equation}
+where
+\begin{align*}
+ A_s^i=\frac1N\sum_{j=1}^N
+ \left[b(X_s^i,X_s^j)-b(\overline X_s^i,\overline X_s^j)\right],\quad 
+ R_s^i=\frac1N\sum_{j=1}^N b(\overline X_s^i,\overline X_s^j)
+       -b[\mu_s](\overline X_s^i).
+\end{align*}
+The Lipschitz property and Jensen's inequality imply
+\begin{equation}\label{eq:A-bound}
+ \E \abs{A_s^i}^2
+ \leq 2L_b^2\E \left(\abs{\Delta_s^i}^2
+       +\frac1N\sum_{j=1}^N\abs{\Delta_s^j}^2\right) \leq4L_b^2D(s).
+\end{equation}
+
+
+
+To estimate the empirical sampling error $R_s^i$, define
+$g_s(x,y)=b(x,y)-b[\mu_s](x)$.  Conditional on
+$\overline X_s^i=x$, the variables
+$g_s(x,\overline X_s^j)$, $j\ne i$, are independent and centered.  Hence all
+their cross terms vanish, while the self term is kept separate:
+\begin{align}
+ \E\abs{R_s^i}^2
+ &=\frac{N-1}{N^2}
+   \E\abs{g_s(\overline X_s^i,\overline X_s^j)}^2
+   +\frac1{N^2}
+   \E\abs{g_s(\overline X_s^i,\overline X_s^i)}^2
+ \leq \frac{C_T}{N}, \label{eq:R-bound}
+\end{align}
+where $j\ne i$ in the first term and $C_T$ is independent of $N$. 
+To justify the last inequality, observe that $ \abs{g_s(x,y)} = \abs{b(x,y)-b[\mu_s](x)} 
+ \leq L_b\int\abs{y-z}\,\mu_s(\dd z)$ 
+and use the uniform second-moment bound \eqref{eq:mv-moment}.  More precisely,
+set $ m_2(s):=\int_{\R^d}\abs{z}^2\mu_s(\dd z)
+       =\E\abs{\overline X_s}^2$. 
+Jensen's inequality with respect to $\mu_s$ gives, for every $x,y\in\R^d$,
+\begin{align*}
+ \abs{g_s(x,y)}^2
+ &\leq L_b^2\int_{\R^d}\abs{y-z}^2\mu_s(\dd z) \leq 2L_b^2\left(\abs{y}^2+m_2(s)\right).
+\end{align*}
+Since each $\overline X_s^j$ has law $\mu_s$, this estimate applies both to
+the off-diagonal term $j\ne i$ and to the self term $j=i$:
+\begin{align*}
+ \E\abs{g_s(\overline X_s^i,\overline X_s^j)}^2  \leq4L_b^2m_2(s),\quad 
+ \E\abs{g_s(\overline X_s^i,\overline X_s^i)}^2  \leq4L_b^2m_2(s).
+\end{align*}
+Finally, 
+\[
+ \sup_{0\leq s\leq T}m_2(s) = \sup_{0\leq s\leq T}\E\abs{\overline X_s}^2
+ \leq C_T
+\]
+by \eqref{eq:mv-moment}, which proves the uniform bound in
+\eqref{eq:R-bound}.
+
+
+
+Lastly, for every $i$ and $t\leq T$, first take the supremum in
+\eqref{eq:coupling-error-decomposition} and apply Cauchy--Schwarz in time:
+\begin{align*}
+ \sup_{0\leq r\leq t}\abs{\Delta_r^i}^2
+ &\leq t\int_0^t\abs{A_s^i+R_s^i}^2\dd s \leq2T\int_0^t\left(\abs{A_s^i}^2+
+       \abs{R_s^i}^2\right)\dd s.
+\end{align*}
+Taking expectations, using \eqref{eq:A-bound} and \eqref{eq:R-bound}, and then maximizing over $i$, we have 
+\begin{align*}
+ D(t)
+ &\leq8TL_b^2\int_0^tD(s)\dd s
+   +2T\int_0^t\frac{C_T}{N}\dd s \leq C_T\int_0^tD(s)\dd s+\frac{C_T}{N}.
+\end{align*}
+Gronwall's inequality proves \eqref{eq:poc-rate}.  Also,
+\[
+ \Law(\overline X_t^1,\ldots,\overline X_t^k)=\mu_t^{\otimes k},
+\]
+and $(\overline X_t^1,\ldots,\overline X_t^k)$ is coupled to
+$(X_t^1,\ldots,X_t^k)$.  Therefore
+\[
+ W_2^2\left(\Law(X_t^1,\ldots,X_t^k),\mu_t^{\otimes k}\right)
+ \leq\sum_{i=1}^k\E\abs{X_t^i-\overline X_t^i}^2,
+\]
+which gives \eqref{eq:k-chaos-rate} by applying \eqref{eq:poc-rate} to each term in the sum.
+\end{proof}
+
+\begin{remark}[Chaos does not mean finite particles do not interact]
+At finite $N$, the $X^i$ are correlated.  ``Propagation of chaos'' says that
+every fixed collection becomes asymptotically independent as the surrounding
+population grows.  It does not assert independence of a number of particles
+that grows proportionally with $N$.
+\end{remark}
+
+\begin{corollary}[Convergence of empirical measures]
+\label{cor:empirical-measure-convergence}
+Under the assumptions of Theorem~\ref{thm:poc}, for every $T<\infty$, the empirical measure $\mu_t^N$ in \eqref{eq:empirical-measure-time} converges to the deterministic limit $\mu_t=\Law(\overline X_t)$ in the sense that
+\begin{equation}\label{eq:uniform-empirical-convergence}
+ \sup_{0\leq t\leq T}W_2(\mu_t^N,\mu_t)
+ \longrightarrow0
+ \qquad\text{in probability}.
+\end{equation}
+Also, $\mu_\cdot\in ([0,T];\cP_2(\R^d))$ and satisfies the mean-field equation
+\eqref{eq:mv-weak}.
+\end{corollary}
+\begin{proof} Let $\overline X_t^i$ be the independent copies of the McKean--Vlasov SDE \eqref{eq:mv-sde}. 
+Define the empirical measure of the independent nonlinear processes by
+\[
+ \overline\mu_t^N:=\frac1N\sum_{i=1}^N\delta_{\overline X_t^i}.
+\]
+Pairing $X_t^i$ with $\overline X_t^i$ gives a coupling of
+$\mu_t^N$ and $\overline\mu_t^N$: 
+\[
+ \pi_t^N:=\frac1N\sum_{i=1}^N
+ \delta_{(X_t^i,\overline X_t^i)}
+ \in\Gamma(\mu_t^N,\overline\mu_t^N).
+\]
+Using this admissible coupling in the definition of $W_2$ gives, pathwise,
+\[
+ W_2^2(\mu_t^N,\overline\mu_t^N)
+ \leq\frac1N\sum_{i=1}^N\abs{X_t^i-\overline X_t^i}^2.
+\]
+ Taking the supremum in $t$ and using
+$\sup_t\sum_i f_i(t)\leq\sum_i\sup_t f_i(t)$ yields
+\[
+ \sup_{0\leq t\leq T}W_2^2(\mu_t^N,\overline\mu_t^N)
+ \leq\frac1N\sum_{i=1}^N
+ \sup_{0\leq t\leq T}\abs{X_t^i-\overline X_t^i}^2.
+\]
+Taking expectations and using \eqref{eq:poc-rate} gives
+\begin{equation}\label{eq:coupled-empirical-error}
+ \E\sup_{0\leq t\leq T}
+ W_2^2(\mu_t^N,\overline\mu_t^N)\leq\frac{C_T}{N}.
+\end{equation}
+Hence this first distance converges to zero in probability.
+
+It remains to compare $\overline\mu_t^N$ with $\mu_t$.  For each $t$, $\overline\mu_t^N$ is the empirical measure of $N$ i.i.d.\ samples from $\mu_t$.  The law of large numbers gives $W_2^2(\mu_t,\overline\mu_t^N)\to 0$ in probability (in fact, Lemma~\ref{lem:empirical-wasserstein-slln} proves almost-sure convergence). But we need a uniform-in-time version.  To this end, we lift the problem to path space.
+  Let
+\[
+ \mathsf X=C([0,T];\R^d),\qquad
+ \norm{\omega}_\infty=\sup_{0\leq t\leq T}\abs{\omega(t)},
+\]
+and let $\mathsf P=\Law(\overline X_{\cdot})$ on $\mathsf X$.  The moment bound
+\eqref{eq:mv-moment} implies $\mathsf P\in\cP_2(\mathsf X)$.  The paths
+$\overline X_{\cdot}^1,\overline X_{\cdot}^2,\ldots$ are i.i.d.\ with law
+$\mathsf P$, so their empirical path measure
+\[
+ \mathsf P^N=\frac1N\sum_{i=1}^N
+ \delta_{\overline X_{\cdot}^i}
+\]
+converges almost surely to $\mathsf P$ in $W_2$ on $\mathsf X$.  Here are the
+two ingredients behind this statement.  First, $\mathsf X$ is a separable
+Polish space, so it admits a countable convergence-determining family
+$\{f_m\}_{m\geq1}\subset C_b(\mathsf X)$.  For each $m$, the scalar strong law
+gives
+\[
+ \int_{\mathsf X}f_m\,\dd\mathsf P^N
+ =\frac1N\sum_{i=1}^Nf_m(\overline X_{\cdot}^i)
+ \longrightarrow\E f_m(\overline X_{\cdot})
+ =\int_{\mathsf X}f_m\,\dd\mathsf P
+ \qquad\text{almost surely}.
+\]
+Intersecting these probability-one events over the countable family proves
+$\mathsf P^N\Rightarrow\mathsf P$ almost surely.  This is only weak
+convergence; by itself it does not control quadratic transportation cost.
+
+Second, \eqref{eq:mv-moment} makes
+$\norm{\overline X_{\cdot}}_\infty^2$ integrable, so another application of
+the scalar strong law gives convergence of the second moments:
+\[
+ \frac1N\sum_{i=1}^N\norm{\overline X_{\cdot}^i}_\infty^2
+ \longrightarrow
+ \E\norm{\overline X_{\cdot}}_\infty^2.
+\]
+On a separable Banach space, weak convergence together with convergence of
+these second moments is equivalent to $W_2$ convergence
+\cite[Theorem~6.9]{Villani2009}.  We need this stronger conclusion because all
+evaluation maps $e_t$ are simultaneously $1$-Lipschitz for the supremum norm;
+the resulting Wasserstein contraction below controls every $t\in[0,T]$ with
+one path-space bound.  Weak convergence alone would not yield this uniform
+$W_2$ estimate.
+
+For the evaluation map $e_t(\omega)=\omega(t)$,
+$(e_t)_\#\mathsf P^N=\overline\mu_t^N$ and
+$(e_t)_\#\mathsf P=\mu_t$.  Since
+$\abs{e_t(\omega)-e_t(\eta)}\leq\norm{\omega-\eta}_\infty$, pushing forward
+any path-space coupling gives
+\[
+ \sup_{0\leq t\leq T}W_2(\overline\mu_t^N,\mu_t)
+ \leq W_{2,\mathsf X}(\mathsf P^N,\mathsf P)
+ \longrightarrow0
+ \qquad\text{almost surely}.
+\]
+The triangle inequality and \eqref{eq:coupled-empirical-error} now prove
+\eqref{eq:uniform-empirical-convergence}.
+
+Finally, apply It\^o's formula to $\varphi(\overline X_t)$ for
+$\varphi\in C_c^\infty(\R^d)$:
+\[
+ \varphi(\overline X_t)-\varphi(\overline X_0)
+ =\int_0^t\left[
+ b[\mu_s](\overline X_s)\cdot\nabla\varphi(\overline X_s)
+ +\frac{\sigma^2}{2}\Delta\varphi(\overline X_s)\right]\dd s
+ +\sigma\int_0^t\nabla\varphi(\overline X_s)\cdot\dd B_s.
+\]
+The stochastic integral has zero expectation.  Taking expectations and using
+$\mu_s=\Law(\overline X_s)$ gives exactly \eqref{eq:mv-weak}.  The
+mean-square continuity established in \eqref{eq:frozen-ms-continuity}, applied
+at the fixed point $m=\mu$, gives $\mu\in C([0,T];\cP_2(\R^d))$.
+\end{proof}
+
+\begin{remark}[The empirical-measure rate is dimension dependent]
+\label{rem:empirical-measure-rate}
+The bound \eqref{eq:coupled-empirical-error} is not by itself a rate for
+$W_2(\mu_t^N,\mu_t)$, because one must also estimate the sampling error
+$W_2(\overline\mu_t^N,\mu_t)$.  At a fixed time $t$, suppose that $\mu_t$ has
+a finite $q$th moment, with $q>4$ when $d\leq4$ and
+$q>2d/(d-2)$ when $d>4$.  Theorem~1 of
+\cite{FournierGuillin2015}, applied with $p=2$, gives
+\[
+ \E W_2^2(\overline\mu_t^N,\mu_t)\leq C_t r_d(N),
+ \qquad
+ r_d(N)=
+ \begin{cases}
+  N^{-1/2},&d<4,\\
+  N^{-1/2}\log(1+N),&d=4,\\
+  N^{-2/d},&d>4.
+ \end{cases}
+\]
+Here $C_t$ depends on $d,q$, and the $q$th moment of $\mu_t$.  Since
+\[
+ W_2^2(\mu_t^N,\mu_t)
+ \leq2W_2^2(\mu_t^N,\overline\mu_t^N)
+     +2W_2^2(\overline\mu_t^N,\mu_t),
+\]
+\eqref{eq:coupled-empirical-error} yields the fixed-time estimate
+\[
+ \E W_2^2(\mu_t^N,\mu_t)
+ \leq C_TN^{-1}+2C_t r_d(N).
+\]
+Thus, under generic moment assumptions, the i.i.d.\ sampling error rather
+than the propagation-of-chaos coupling is the slower term.  The path-space
+argument above proves uniform-in-time convergence but does not provide one of
+these finite-dimensional rates: $C([0,T];\R^d)$ is infinite dimensional, and
+a quantitative path-space estimate requires additional control of temporal
+regularity or metric entropy.
+\end{remark}
+
+When the system is deterministic, the empirical measure convergence can be proved directly without the path-space argument.  The following proposition is a
+deterministic analogue of Corollary~\ref{cor:empirical-measure-convergence} and is useful for the analysis of the mean-field limit of deterministic particle systems. 
+\begin{proposition}[Deterministic empirical approximation]
+\label{prop:deterministic-empirical-convergence}
+ Assume $\sigma=0$ and let $b$ satisfy Assumption~\ref{ass:regular-mf}.  Let
+$\mu_0^N=N^{-1}\sum_{i=1}^N\delta_{x_0^{i,N}}\in\cP_2(\R^d)$ be deterministic,
+let $\mu_t^N$ be the empirical measure of the particle ODE
+\eqref{eq:particles}, and let $\mu_t$ solve the mean-field continuity equation \eqref{eq:mv-weak} 
+with initial law $\mu_0\in\cP_2(\R^d)$.  Then
+\begin{equation}\label{eq:deterministic-empirical-stability}
+ \sup_{0\leq t\leq T}W_2(\mu_t^N,\mu_t)
+ \leq e^{2L_bT}W_2(\mu_0^N,\mu_0).
+\end{equation}
+Consequently, $W_2(\mu_0^N,\mu_0)\to0$ implies uniform-in-time convergence of
+the deterministic empirical measures.  If the initial points are instead
+i.i.d.\ with law $\mu_0$, the same conclusion holds almost surely.
+\end{proposition}
+\begin{proof}
+Let $\pi_0\in\Gamma(\mu_0^N,\mu_0)$ be an optimal coupling that achieves the minimum in the definition of the Wasserstein distance. Here we
+use \emph{one-particle characteristic maps}, not the flow on the full
+configuration space $(\R^d)^N$ (For a prescribed measure curve $(m_t)_{t\geq0}$, its one-particle characteristic map $f_t^m$ sends an initial position $x$ to the endpoint at
+time $t$ of the nonautonomous ODE $  \dot z_s=b[m_s](z_s)$ with $z_0=x$.
+Thus the measure curve determines the velocity field, and the characteristic
+map transports each initial point along that field.)
+Once the two measure curves $\mu_t^N$ and
+$\mu_t$ are fixed, define characteristic maps $f_t^N,f_t:\R^d\to\R^d$ by
+\begin{align*}
+ \frac{\dd}{\dd t}f_t^N(x) &=b[\mu_t^N](f_t^N(x)),\qquad f_0^N(x)=x, \\
+ \frac{\dd}{\dd t}f_t(y)   &=b[\mu_t](f_t(y)),\qquad f_0(y)=y.
+\end{align*}
+In particular, for every initial atom $x_0^{i}$, the particle equation reads
+\[
+ \dot X_t^{i}
+ =\frac1N\sum_{j=1}^N b(X_t^{i},X_t^{j})
+ =b[\mu_t^N](X_t^{i}),\qquad X_0^{i}=x_0^{i}.
+\]
+This is exactly the characteristic ODE defining $f_t^N(x_0^{i})$.
+Uniqueness of that ODE therefore gives $X_t^{i}=f_t^N(x_0^{i})$.
+Hence
+$(f_t^N)_\#\mu_0^N=\mu_t^N$.  Similarly,
+$(f_t)_\#\mu_0=\mu_t$.  Therefore,
+\[
+\pi_t=(f_t^N,f_t)_\#\pi_0\in\Gamma(\mu_t^N,\mu_t).
+\]
+
+Let $(X_0,Y_0)$ have law $\pi_0$ and set $X_t=f_t^N(X_0)$ and $Y_t=f_t(Y_0)$.  Then $(X_t,Y_t)$ has law $\pi_t$ and
+\[ D(t):=\int_{\R^d\times\R^d}\abs{x-y}^2\pi_t(\dd x,\dd y)= \E|X_t-Y_t|^2.
+\]
+The chain rule gives
+\[
+ D'(t)=2\int (x-y)\cdot
+ \bigl(b[\mu_t^N](x)-b[\mu_t](y)\bigr)\,\pi_t(\dd x,\dd y).
+\]
+Because the first and second marginals of $\pi_t$ are $\mu_t^N$ and
+$\mu_t$, respectively,
+\[
+ b[\mu_t^N](x)-b[\mu_t](y)
+ =\int\bigl[b(x,x')-b(y,y')\bigr]  \pi_t(\dd x',\dd y').
+\]
+Substitution and Fubini's theorem give the first equality:
+\begin{align*}
+ D'(t)
+ &=2\iint (x-y)\cdot
+   \bigl[b(x,x')-b(y,y')\bigr]\,
+   \pi_t(\dd x,\dd y)\pi_t(\dd x',\dd y')\\
+ &\leq2L_b\iint\abs{x-y}
+   \bigl(\abs{x-y}+\abs{x'-y'}\bigr)\,
+   \pi_t(\dd x,\dd y)\pi_t(\dd x',\dd y')\\
+ &\leq4L_bD(t),
+\end{align*}
+where the last step uses
+$(\int\abs{x-y}\dd\pi_t)^2\leq D(t)$.  Gronwall's inequality yields
+$D(t)\leq e^{4L_bt}D(0)$.  Since $\pi_t$ is an admissible coupling and
+$D(0)=W_2^2(\mu_0^N,\mu_0)$, taking square roots proves
+\eqref{eq:deterministic-empirical-stability}.  The last assertion follows
+from Lemma~\ref{lem:empirical-wasserstein-slln}.
+\end{proof}
+
+%%%%%%%%%%%===============
+\subsection{Examples}
+
+\begin{example}[linear consensus]
+Let $b(x,y)=y-x$. Then, the system is 
+$$
+dX_t^i= \frac 1 N \sum_{j=1}^N (X_j^i - X_t^i) \dd t+\sigma\dd B_t = [ - X_t^i + \frac 1 N  \sum_{j=1}^N  X_t^j] \dd t+\sigma\dd B_t.
+$$
+  For the deterministic system, define
+\[
+  m_t^N=\frac1N\sum_iX_t^i,
+  \qquad
+  \mathcal V_t^N=\frac1N\sum_i\abs{X_t^i-m_t^N}^2.
+\]
+Because the pair forces cancel after summation, $\dot m_t^N=0$.  Moreover,
+$\dot X_t^i=m_0^N-X_t^i$, so
+\[
+  X_t^i=m_0^N+e^{-t}(X_0^i-m_0^N),
+  \qquad \mathcal V_t^N=e^{-2t}\mathcal V_0^N.
+\]
+
+At the mean-field level the drift is $m_t-x$, where
+$m_t=\int x\,\mu_t(\dd x)$ is constant. The McKean--Vlasov SDE is
+\[
+  \dd\overline X_t=(m_0-\overline X_t)\dd t+\sigma\dd B_t, 
+\] 
+which is an Ornstein--Uhlenbeck process.  The law $\mu_t$ is Gaussian with mean $m_0$ and variance $\sigma^2(1-e^{-2t})/2$. 
+The centered second moment
+$S_t=\int\abs{x-m_t}^2\mu_t(\dd x)$ obeys
+\[
+  \dot S_t=-2S_t+d\sigma^2,
+  \qquad
+  S_t=e^{-2t}S_0+\frac{d\sigma^2}{2}(1-e^{-2t}).
+\]
+Attraction tries to collapse the law, while diffusion maintains a nonzero
+width.  This balance reappears in noisy attention and generative samplers.
+
+\end{example}
+
+
+\begin{exercise}[Mean-field scaling and its alternatives] TBV. 
+Replace $1/N$ in \eqref{eq:particles} by $N^{-\gamma}$ for the consensus
+kernel.  Determine the relaxation time $\tau_N$, defined by
+$e^{-t/\tau_N}$ being the contraction factor of a centered particle
+deviation in the deterministic system, as a function of $N$ and $\gamma$.
+Which value produces order-one interaction dynamics (i.e., on
+fixed times $t=O(1)$, this contraction factor has a nontrivial limit in
+$(0,1)$, or equivalently that $\tau_N$ stays bounded away from both zero and
+infinity) as $N\to\infty$?
+\emph{Hint:} compute the equation for $X^i-m^N$.
+\end{exercise}
+\begin{proof}[Solution]
+For $b(x,y)=y-x$, the rescaled system is
+\begin{equation}\label{eq:scaled-consensus}
+ \dd X_t^i=N^{1-\gamma}(m_t^N-X_t^i)\dd t+\sigma\dd B_t^i.
+\end{equation}
+First set $\sigma=0$.  The empirical mean is conserved because
+\[
+ \frac1N\sum_{i=1}^N N^{-\gamma}
+       \sum_{j=1}^N(X_t^j-X_t^i)=0.
+\]
+Thus $Y_t^i:=X_t^i-m_t^N$ solves
+\[
+ \dot Y_t^i=-N^{1-\gamma}Y_t^i,
+ \qquad
+ Y_t^i=e^{-t N^{1-\gamma}}Y_0^i.
+\]
+The $e$-folding relaxation time for particle deviations is therefore
+\begin{equation}\label{eq:relaxation-time}
+ \tau_N=N^{\gamma-1}.
+\end{equation}
+The empirical variance decays as
+$\mathcal V_t^N=e^{-2N^{1-\gamma}t}\mathcal V_0^N$, so its $e$-folding time is
+$\tau_N/2$; both notions have the same $N$-scaling.
+
+If $\sigma>0$, then
+\[
+ \dd m_t^N=\frac{\sigma}{N}\sum_{j=1}^N\dd B_t^j,
+ \qquad
+ \dd Y_t^i=-N^{1-\gamma}Y_t^i\dd t
+ +\sigma\left(\dd B_t^i-\frac1N\sum_{j=1}^N\dd B_t^j\right).
+\]
+Thus noise adds fluctuations but does not change the relaxation rate of the
+initial deviation. 
+
+The precise statement is obtained by writing
+$\lambda_N=N^{1-\gamma}=\tau_N^{-1}$.  When $\sigma=0$,
+\[
+ \max_{1\leq i\leq N}\abs{Y_t^i}
+ =e^{-\lambda_Nt}\max_{1\leq i\leq N}\abs{Y_0^i}.
+\]
+Hence, if $\gamma<1$, then for every fixed $t>0$ the right side converges to
+zero, provided the initial deviations are uniformly bounded.  The nontrivial
+decay profile is visible on the boundary-layer time $t=\tau_Ns$, since
+$Y_{\tau_Ns}^i=e^{-s}Y_0^i$.  If $\gamma>1$, then for every fixed $T<\infty$,
+\[
+ \sup_{0\leq t\leq T}\max_i\abs{Y_t^i-Y_0^i}
+ \leq\bigl(1-e^{-\lambda_NT}\bigr)\max_i\abs{Y_0^i}
+ \longrightarrow0,
+\]
+so the interaction has no leading-order effect on that time interval.  For
+$\gamma=1$, $Y_t^i=e^{-t}Y_0^i$, which is a nontrivial order-one contraction.
+Thus $\boxed{\gamma=1}$ is the unique critical scaling.
+
+For fixed $\sigma>0$, the term \emph{frozen} refers only to the interaction,
+not to the full noisy dynamics.  Indeed, conditional on $Y_0^i$,
+\[
+ \E\!\left[\abs{Y_t^i}^2\mid Y_0^i\right]
+ =e^{-2\lambda_Nt}\abs{Y_0^i}^2+{}
+ \frac{d\sigma^2(1-N^{-1})}{2\lambda_N}
+   \bigl(1-e^{-2\lambda_Nt}\bigr).
+\]
+Thus $\gamma<1$ still gives mean-square consensus at each fixed $t>0$ under
+uniformly bounded initial second moments, whereas for $\gamma>1$ the
+interaction vanishes but the centered Brownian fluctuations remain.
+\end{proof}
+
+\begin{exercise}[Weak equation with state-dependent diffusion]
+Let the noise be $\Sigma(X_t^i,\mu_t^N)\dd B_t^i$, where
+\[
+ \Sigma:\R^d\times\cP_2(\R^d)\longrightarrow\R^{d\times d}.
+\]
+Derive the analogue of \eqref{eq:empirical-weak}.
+\end{exercise}
+\begin{proof}[Solution]
+Set
+\[
+ a(x,\mu):=\Sigma(x,\mu)\Sigma(x,\mu)^\top.
+\]
+It\^o's formula, applied before averaging, gives
+\begin{align*}
+ \dd\varphi(X_t^i)
+ &=\nabla\varphi(X_t^i)\cdot b[\mu_t^N](X_t^i)\dd t \quad+\frac12\operatorname{tr}\!\left(
+ a(X_t^i,\mu_t^N)D^2\varphi(X_t^i)\right)\dd t\\
+ &\quad+\nabla\varphi(X_t^i)^\top
+ \Sigma(X_t^i,\mu_t^N)\dd B_t^i.
+\end{align*}
+Therefore
+\begin{align}
+ \dd\int\varphi\,\dd\mu_t^N
+ &=\int\left[b[\mu_t^N]\cdot\nabla\varphi
+ +\frac12\operatorname{tr}\!\left(a(\,\cdot\,,\mu_t^N)
+ D^2\varphi\right)\right]\dd\mu_t^N\dd t
+ +\dd M_t^{N,\varphi},\label{eq:state-dependent-weak}\\
+ M_t^{N,\varphi}
+ &=\frac1N\sum_{i=1}^N\int_0^t
+ \nabla\varphi(X_s^i)^\top\Sigma(X_s^i,\mu_s^N)\dd B_s^i.
+ \label{eq:state-dependent-martingale}
+\end{align}
+Since the Brownian motions are independent, the quadratic variation is
+\begin{equation}\label{eq:state-dependent-bracket}
+ \left\langle M^{N,\varphi}\right\rangle_t
+ =\frac1{N^2}\sum_{i=1}^N\int_0^t
+ \abs{\Sigma(X_s^i,\mu_s^N)^\top\nabla\varphi(X_s^i)}^2\dd s.
+\end{equation}
+In particular, if
+$\sup_{x,\mu}\abs{\Sigma(x,\mu)^\top\nabla\varphi(x)}<\infty$, the martingale
+is again of order $N^{-1/2}$ in $L^2$.  Formally passing to a deterministic
+limit gives
+\[
+ \partial_t\rho
+ =-\diver\bigl(\rho b[\rho]\bigr)
+ +\frac12\sum_{k,\ell=1}^d
+ \partial_{k\ell}\bigl(a_{k\ell}(x,\rho)\rho\bigr).
+\]
+There are no derivatives of $\Sigma$ in the weak generator; in the density
+equation the derivatives act on the full product $a_{k\ell}\rho$.
+\end{proof}
+
+
+
+
+
+\paragraph{\textbf{Literature and storyline.}}
+The modern mean-field viewpoint begins with Kac's stochastic model for a
+dilute gas \cite{Kac1956}.  His decisive simplification was to retain the
+many-particle symmetry and collision mechanism while discarding enough
+microscopic detail to make the large-$N$ question mathematically visible.
+In Kac's terminology, ``chaos'' is the asymptotic product structure of fixed
+particle marginals, not disorder in the trajectories.  His autobiography
+recalls that, even as a student, he resisted a formal derivation until he
+understood its motivation; the same instinct later informed his use of simple
+probabilistic models \cite{Kac1985Enigmas}.  McKean
+then connected nonlinear parabolic equations with law-dependent Markov
+processes \cite{McKean1966}; this is the conceptual origin of the
+McKean--Vlasov SDE used above.  Sznitman's Saint-Flour notes made coupling and
+propagation of chaos into a reusable proof framework \cite{Sznitman1991}.
+The mathematical storyline of this section follows that history: first write
+one particle's drift through the empirical law, then identify the nonlinear
+limit process, and finally prove that finitely many tagged particles become
+asymptotically independent.  The point is not merely to derive a PDE; it is to
+justify when a population can be replaced by one statistically representative
+nonlinear particle.
+
+\subsection{Remarks and connections forward}
+\begin{itemize}[leftmargin=*]
+  \item We have three scales: microscopic (particles), mesoscopic (empirical measure), and macroscopic (mean-field PDE):
+ \begin{align*}
+   \text{Micro-scale }  \{X_t^i\}_{i=1}^N  \longrightarrow \text{Meso-scale }   \mu_t^N \longrightarrow \text{Macro-scale } \mu_t .
+ \end{align*}
+  % \begin{tikzpicture}
+  %     \node (micro) at (0,0) {Microscopic};
+  %     \node (meso) at (2,0) {Mesoscopic};
+  %     \node (macro) at (4,0) {Macroscopic};
+  %   \end{tikzpicture}
+
+  \item Equation~\eqref{eq:mv-fp} is already a generative-dynamics template:
+  a learned drift transports probability while Brownian noise smooths it.
+  \item The map $\mu_0\mapsto\mu_t$ is a nonlinear solution operator.  Learning
+  it from many initial conditions is an operator-learning problem.
+  \item The empirical weak identity \eqref{eq:empirical-weak} will become a
+  derivative-free regression equation for the inverse problem in
+  Section~\ref{sec:learning-ips}.
+  \item In a Transformer, tokens are not i.i.d.\ at later layers; the point of
+  the theorem is that weak mean-field interaction can nevertheless create an
+  asymptotically independent nonlinear description under the stated model.
+\end{itemize}
+
+
+
+%%%%%%%%%%%%%===========
+\section{Gradient flow and optimal transport}\label{sec:gradient-flow}
+
+\paragraph{\textbf{Key question}}
+When does an IPS have a decreasing energy (that is, when is it a gradient
+flow),
+and why is the relevant geometry on probability measures supplied by optimal
+transport?
+
+The passage from particles to measures in Section~\ref{sec:ips} does more than reduce a large system to one equation.  It reveals a geometry.  A velocity
+field moves mass through the continuity equation; optimal transport measures
+the least kinetic action required by such a motion; and, when the velocity is
+generated by an energy, the evolution becomes steepest descent in this
+transport geometry.  Thus a particle ODE, a nonlinear PDE, and an optimization
+principle can be three descriptions of the same dynamics.
+
+\subsection{The continuity equation as a path in probability space}
+
+Consider a sufficiently regular curve $(\mu_t)_{0\leq t\leq T}$ in
+$\cP_2(\R^d)$ and a velocity field $v_t:\R^d\to\R^d$ satisfying
+\begin{equation}\label{eq:gf-continuity}
+ \partial_t\mu_t+\diver(\mu_t v_t)=0.
+\end{equation}
+The equation says that mass is neither created nor destroyed: it is transported
+with instantaneous velocity $v_t$.
+Recall that for $0\leq s\leq t\leq T$, the \emph{characteristic flow}
+$F_{s,t}:\R^d\to\R^d$ is defined pointwise by
+\[
+ \frac{\dd}{\dd r}F_{s,r}(x)=v_r(F_{s,r}(x)),\qquad F_{s,s}(x)=x.
+\]
+Thus $F_{s,t}(x)$ is the position at time $t$ of a particle placed at $x$ at
+time $s$.  Uniqueness gives the flow property
+$F_{r,t}\circ F_{s,r}=F_{s,t}$; we abbreviate $F_t=F_{0,t}$.
+If $v_t$ is Lipschitz in space, Proposition~\ref{prop:appendix-characteristics}
+gives $\mu_t=(F_t)_\#\mu_0$.  Conversely, differentiating this pushforward
+identity gives the weak form of \eqref{eq:gf-continuity}.  This is precisely
+the deterministic part of the mean-field equation in
+Section~\ref{sec:ips}, now viewed as
+a curve in the space of probability measures.
+
+The instantaneous kinetic energy of this motion is
+\begin{equation}\label{eq:kinetic-action-density}
+ \norm{v_t}_{L^2(\mu_t)}^2
+ :=\int_{\R^d}\abs{v_t(x)}^2\,\mu_t(\dd x),
+\end{equation}
+and its action over $[0,T]$ is the time integral of
+\eqref{eq:kinetic-action-density}.  The measure $\mu_t$ specifies where mass
+is present, while $v_t$ specifies how that mass moves.  The pair
+$(\mu_t,v_t)$, rather than either component alone, is the natural dynamical
+object.
+
+\begin{theorem}[Benamou--Brenier dynamic formulation]
+\label{thm:benamou-brenier}
+For $\mu_0,\mu_1\in\cP_2(\R^d)$,
+\begin{equation}\label{eq:benamou-brenier}
+ W_2^2(\mu_0,\mu_1)
+ =\inf_{(\mu,v)}
+   \int_0^1\int_{\R^d}\abs{v_t(x)}^2\,\mu_t(\dd x)\dd t,
+\end{equation}
+where the infimum is over narrowly continuous curves
+$\mu:[0,1]\to\cP_2(\R^d)$ and Borel velocity fields $v$ with finite action
+that satisfy \eqref{eq:gf-continuity} in the distributional sense and have
+the prescribed endpoints.
+\end{theorem}
+
+See \cite{BenamouBrenier2000} and
+\cite[Chapter~7]{Villani2009}.  The static definition of $W_2$ minimizes the
+quadratic displacement over couplings of two endpoint measures.  Theorem
+\ref{thm:benamou-brenier} gives the complementary dynamic picture: the same
+quantity is the least kinetic action among all mass-preserving paths joining
+the endpoints.  In particular, $W_2$ is not merely a convenient metric for
+weak convergence; it measures the cost of motion allowed by the continuity
+equation.
+
+
+\vspace{2mm}
+\paragraph{\textbf{Interpolation and geodesics.}}
+If $\pi\in \Gamma(\mu_0,\mu_1)$ is an optimal coupling (i.e., it attains the infimum in the definition of $W_2$: $\int_{\R^d\times\R^d}|x-y|^2\,\pi(\dd x,\dd y)
+ =W_2^2(\mu_0,\mu_1)$), then the displacement interpolation
+$T_t:\R^d\times\R^d\to\R^d$ defined by $T_t(x,y)=(1-t)x+ty$ gives a constant-speed $W_2$ geodesic in $\cP_2(\R^d)$. Specifically, let
+\begin{equation}\label{eq:displacement-interpolation}
+ \mu_t=(T_t)_\#\pi,
+ \qquad 0\leq t\leq1,
+\end{equation}
+Then, the curve $(\mu_t)_{0\leq t\leq1}$ satisfies
+\[
+ W_2(\mu_s,\mu_t)=|t-s|W_2(\mu_0,\mu_1),
+ \qquad 0\leq s,t\leq1.
+\]
+To prove it, take a \emph{jointly distributed}
+pair $(X_0,X_1)$ with law $\pi$. Thus, $X_0\sim\mu_0$ and
+$X_1\sim\mu_1$, and they are coupled optimally (rather than chosen
+independently) so that $W_2(\mu_0,\mu_1)=\bigl(\E\abs{X_0-X_1}^2\bigr)^{1/2}$.  Set
+\[
+ X_t=(1-t)X_0+tX_1.
+\]
+The pushforward--law correspondence in
+Lemma~\ref{lem:pushforward-random-variable} gives
+$\Law(X_t)=(T_t)_\#\pi=\mu_t$.  Hence $(X_s,X_t)$ is an admissible coupling
+of $(\mu_s,\mu_t)$, and
+\begin{equation}\label{eq:geodesic-upper-bound}
+ W_2(\mu_s,\mu_t)
+ \leq\bigl(\E\abs{X_s-X_t}^2\bigr)^{1/2} = |t-s| \bigl(\E\abs{X_0-X_1}^2\bigr)^{1/2}
+ =\abs{t-s}W_2(\mu_0,\mu_1).
+\end{equation}
+To obtain the reverse inequality, suppose $0\leq s<t\leq1$.  Apply
+\eqref{eq:geodesic-upper-bound} to the two end intervals and use the triangle
+inequality:
+\begin{align*}
+ W_2(\mu_0,\mu_1)
+ &\leq W_2(\mu_0,\mu_s)+W_2(\mu_s,\mu_t)
+       +W_2(\mu_t,\mu_1)\\
+ &\leq sW_2(\mu_0,\mu_1)+W_2(\mu_s,\mu_t)
+       +(1-t)W_2(\mu_0,\mu_1).
+\end{align*}
+Rearranging gives
+$W_2(\mu_s,\mu_t)\geq(t-s)W_2(\mu_0,\mu_1)$, which, together with the
+upper bound, proves equality.
+
+When the optimal coupling is induced by
+a map $T$, meaning $\pi=(\Id,T)_\#\mu_0$, one may equivalently take
+$X_0\sim\mu_0$ and $X_1=T(X_0)$.  The pair $(X_0,X_1)$ then has law
+$(\Id,T)_\#\mu_0$, whose first marginal is $\mu_0$ and whose second marginal
+is $T_\#\mu_0=\mu_1$.  By the composition rule for pushforwards in
+Lemma~\ref{lem:pushforward-random-variable},
+\[
+ \mu_t=(T_t)_\#(\Id,T)_\#\mu_0
+ =\bigl(T_t\circ(\Id,T)\bigr)_\#\mu_0
+ =((1-t)\Id+tT)_\#\mu_0.
+\]
+Thus particles travel on straight lines, but the
+resulting path of densities is generally nonlinear.  This interpolation of
+mass, rather than linear interpolation of densities, is the basic geometry
+behind Wasserstein gradient flow.
+
+\subsection{Potential interactions: one gradient flow at two scales}
+
+We now identify the additional structure that turns a general IPS into
+a gradient flow.  Let $U,W\in C^2(\R^d)$ and suppose that $W$ is even:
+$W(z)=W(-z)$.  Consider the deterministic particle system
+\begin{equation}\label{eq:potential-particle-system}
+ \dot X_t^i=-\nabla U(X_t^i)
+ -\frac1N\sum_{j=1}^N\nabla W(X_t^i-X_t^j),
+ \qquad i=1,\ldots,N.
+\end{equation}
+It is a special case of Section~\ref{sec:ips} with
+$b(x,y)=-\nabla U(x)-\nabla W(x-y)$.  Define the energy
+\begin{equation}\label{eq:finite-particle-energy}
+ \mathcal F_N(X^1,\ldots,X^N)
+ =\frac1N\sum_{i=1}^NU(X^i)
+ +\frac1{2N^2}\sum_{i,j=1}^NW(X^i-X^j).
+\end{equation}
+
+\begin{proposition}[Particle descent and Wasserstein descent]
+\label{prop:ips-wasserstein-gradient-flow}
+For the potential system \eqref{eq:potential-particle-system},
+\begin{equation}\label{eq:particle-gradient-flow}
+ \dot X_t^i=-N\nabla_{X^i}\mathcal F_N(X_t^1,\ldots,X_t^N),
+\end{equation}
+and therefore
+\begin{equation}\label{eq:particle-energy-dissipation}
+ \frac{\dd}{\dd t}\mathcal F_N(X_t^1,\ldots,X_t^N)
+ =-\frac1N\sum_{i=1}^N\abs{\dot X_t^i}^2\leq0.
+\end{equation}
+At the level of measures, define
+\begin{equation}\label{eq:interaction-energy}
+ \mathcal F(\mu)
+ =\int_{\R^d}U(x)\,\mu(\dd x)
+ +\frac12\iint_{\R^d\times\R^d}
+ W(x-y)\,\mu(\dd x)\mu(\dd y).
+\end{equation}
+Its formal first variation is
+\begin{equation}\label{eq:interaction-first-variation}
+ \frac{\delta\mathcal F}{\delta\mu}[\mu](x)
+ =U(x)+(W*\mu)(x),
+\end{equation}
+and the mean-field equation associated with
+\eqref{eq:potential-particle-system} is
+\begin{equation}\label{eq:wasserstein-interaction-gf}
+ \partial_t\mu_t
+ =\diver\left(\mu_t\nabla
+     \frac{\delta\mathcal F}{\delta\mu}[\mu_t]\right)
+ =\diver\bigl(\mu_t\nabla(U+W*\mu_t)\bigr).
+\end{equation}
+Along a smooth solution,
+\begin{equation}\label{eq:energy-dissipation}
+ \frac{\dd}{\dd t}\mathcal F(\mu_t)
+ =-\int_{\R^d}
+ \left|\nabla\frac{\delta\mathcal F}{\delta\mu}[\mu_t](x)\right|^2
+ \mu_t(\dd x)\leq0.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The following calculation is formal unless the density, potential, and decay justify the differentiations and integration by parts; the metric theory of gradient flows supplies weak formulations under substantially milder hypotheses.\footnote{One convenient sufficient set of classical assumptions is
+$U,W\in C^2(\R^d)$, $W$ even, with $\nabla U$ and $\nabla W$ of at most
+linear growth, together with a positive solution
+$\rho\in C^1([0,T];C^0(\R^d))\cap C^0([0,T];C^2(\R^d))$ having finite
+second moment.  Assume in addition either compact spatial support or enough
+decay that all displayed integrands are integrable, differentiation may pass
+under the integral sign, and the boundary flux
+$\rho_t\nabla(U+W*\rho_t)$ has vanishing contribution at infinity.  These
+conditions are deliberately stronger than necessary.  Weak metric solutions
+under lower semicontinuity, coercivity, and slope assumptions are treated in
+\cite[Chapters~10--11]{AmbrosioGigliSavare2008} and
+\cite[Chapters~23--24]{Villani2009}.}
+
+Since $W$ is even, $\nabla W$ is odd.  Differentiating
+\eqref{eq:finite-particle-energy} with respect to $X^i$, the two appearances
+of $X^i$ in the double sum contribute equally, and hence
+\[
+ \nabla_{X^i}\mathcal F_N
+ =\frac1N\nabla U(X^i)
+ +\frac1{N^2}\sum_{j=1}^N\nabla W(X^i-X^j).
+\]
+This proves \eqref{eq:particle-gradient-flow}.  The ordinary Euclidean chain
+rule then gives
+\[
+ \frac{\dd}{\dd t}\mathcal F_N(X_t)
+ =\sum_i\nabla_{X^i}\mathcal F_N(X_t)\cdot\dot X_t^i
+ =-\frac1N\sum_i\abs{\dot X_t^i}^2.
+\]
+
+To calculate the first variation, let $\mu_\varepsilon=\mu+\varepsilon\eta$ for a finite signed measure $\eta$ with $\eta(\R^d)=0$ and sufficient moments, such that $\mu_\varepsilon$ remains nonnegative for the one-sided or two-sided variations under consideration.  The zero-mass condition is exactly the tangent constraint imposed by $\mu_\varepsilon(\R^d)=1$.  Expanding the two terms of the energy and using
+the symmetry of $W$ gives
+\begin{align*}
+\mathcal F(\mu_\varepsilon)-\mathcal F(\mu)
+ &=\varepsilon\int_{\R^d}(U+W*\mu)\,\eta(\dd y)  +\frac{\varepsilon^2}{2}
+   \iint_{\R^d\times\R^d}W(x-y)\,\eta(\dd x)\eta(\dd y).
+\end{align*}
+Hence,
+$\langle \frac{\delta \mathcal F}{\delta\mu}(\mu), \eta\rangle
+ =\lim_{\varepsilon\to 0}\frac{\mathcal F(\mu_\varepsilon)-\mathcal F(\mu)}{\varepsilon} = \int(U+W*\mu)\,\dd\eta$, which yields
+\eqref{eq:interaction-first-variation}, up to an additive constant that is
+invisible to zero-mass variations.
+
+For the subsequent classical PDE
+calculation we impose the density and regularity assumptions stated above. The velocity in the continuity equation is
+\[
+ v_t=-\nabla\frac{\delta\mathcal F}{\delta\mu}[\mu_t]
+     =-\nabla(U+W*\mu_t),
+\]
+and \eqref{eq:gf-continuity} becomes
+\eqref{eq:wasserstein-interaction-gf}.  Finally, using the continuity equation
+and integrating by parts, we obtain the energy dissipation law \eqref{eq:energy-dissipation}.
+% \begin{align*}
+%  \frac{\dd}{\dd t}\mathcal F(\mu_t)
+%  &=\int\frac{\delta\mathcal F}{\delta\mu}[\mu_t]
+%        \partial_t\mu_t\dd x =\int\frac{\delta\mathcal F}{\delta\mu}[\mu_t]
+%        \diver\left(\mu_t\nabla
+%        \frac{\delta\mathcal F}{\delta\mu}[\mu_t]\right)\dd x =-\int\left|\nabla
+%        \frac{\delta\mathcal F}{\delta\mu}[\mu_t]\right|^2\dd\mu_t.
+% \end{align*}
+\end{proof}
+
+The equality
+$\mathcal F_N(X^1,\ldots,X^N)=\mathcal F(\mu^N)$ is exact under the convention
+that the $i=j$ terms are included.  Thus the finite and continuum energy laws
+are not merely analogous: they are the same energy restricted to empirical
+measures.  The factor $N$ in \eqref{eq:particle-gradient-flow} compensates for
+the energy-per-particle normalization, and the normalized Euclidean speed
+$N^{-1}\sum_i|\dot X^i|^2$ is exactly
+$\int|v|^2\dd\mu^N$.  This is the clearest point of contact between IPS and
+Wasserstein geometry.
+
+The logical direction is important.  A potential IPS with the symmetry
+above produces a Wasserstein gradient flow.  A general interaction
+$b(x,y)$ need not arise from a symmetric potential, but the continuity equation
+and its characteristics remain valid even when no scalar energy exists.
+
+\subsection{Diffusion as entropy descent}
+
+Brownian noise adds a second fundamental energy.  For
+$\mu\in\cP_2(\R^d)$, define the Boltzmann entropy by
+\begin{equation}\label{eq:boltzmann-entropy}
+ \operatorname{Ent}(\mu)
+ =\begin{cases}
+   \displaystyle\int_{\R^d}\rho(x)\log\rho(x)\dd x,
+      &\mu(\dd x)=\rho(x)\dd x,\\
+   +\infty,&\text{otherwise}.
+  \end{cases}
+\end{equation}
+The integral is understood in the extended sense; the finite second moment
+prevents its negative part from being infinite.  Its first variation at a
+positive density is $1+\log\rho$.  Indeed, for a bounded variation
+$\eta$ with $\int\eta\dd x=0$ and $\rho+\varepsilon\eta>0$, the pointwise
+identity $(s\log s)'=1+\log s$ and differentiation under the integral give
+\[
+ \left.\frac{\dd}{\dd\varepsilon}
+ \operatorname{Ent}(\rho+\varepsilon\eta)\right|_{\varepsilon=0}
+ =\int_{\R^d}(1+\log\rho)\eta\dd x.
+\]
+Therefore
+\[
+ \diver\bigl(\rho\nabla \frac{\delta \operatorname{Ent}}{\delta\rho}\bigr)= \diver\bigl(\rho\nabla(1+\log\rho)\bigr)=\Delta\rho.
+\]
+Consequently, the heat equation is the Wasserstein gradient flow of entropy.
+
+For $\beta=\sigma^2/2$, the potential McKean--Vlasov equation from Section~\ref{sec:ips} is formally the gradient flow of the free energy
+\begin{equation}\label{eq:free-energy}
+ \mathcal F_\beta(\rho)
+ =\mathcal F(\rho)+\beta\operatorname{Ent}(\rho):
+\end{equation}
+\begin{equation}\label{eq:free-energy-gradient-flow}
+ \partial_t\rho
+ =\diver\bigl(\rho\nabla(U+W*\rho)\bigr)+\beta\Delta\rho
+ =\diver\left(\rho\nabla
+       \frac{\delta\mathcal F_\beta}{\delta\rho}\right).
+\end{equation}
+
+Along a smooth positive solution,
+\begin{equation}\label{eq:free-energy-dissipation}
+ \frac{\dd}{\dd t}\mathcal F_\beta(\rho_t)
+ =-\int_{\R^d}
+ \abs{\nabla\bigl(U+W*\rho_t+\beta\log\rho_t\bigr)}^2
+ \rho_t\dd x\leq0.
+\end{equation}
+At the particle level, diffusion is produced by random Brownian increments;
+at the law level, the same effect is deterministic steepest descent of
+entropy.  This equivalence is one of the most striking links among
+probability, PDEs, and geometry: microscopic randomness becomes macroscopic
+dissipation.
+
+\subsection{The JKO scheme: implicit Euler in Wasserstein space}
+
+The variational structure suggests a way to construct the flow without
+first writing its PDE.  Given a time step $h>0$ and a measure $\mu^k$, define
+\begin{equation}\label{eq:jko-scheme}
+ \mu^{k+1}\in\argmin_{\mu\in\cP_2(\R^d)}
+ \left\{\mathcal F_\beta(\mu)
+       +\frac1{2h}W_2^2(\mu,\mu^k)\right\}.
+\end{equation}
+This is the Jordan--Kinderlehrer--Otto, or JKO, minimizing-movement scheme
+\cite{JordanKinderlehrerOtto1998}; see also
+\cite{AmbrosioGigliSavare2008}.  It is the metric analogue of the implicit
+Euler step
+\[
+ x^{k+1}\in\argmin_x
+ \left\{F(x)+\frac1{2h}|x-x^k|^2\right\}
+\]
+for the Euclidean gradient flow $\dot x=-\nabla F(x)$.  The first term in
+\eqref{eq:jko-scheme} rewards energy decrease, while the Wasserstein term
+penalizes moving too much mass in one time step.
+
+Testing the minimization problem with the admissible competitor
+$\mu=\mu^k$ immediately gives the discrete energy inequality
+\begin{equation}\label{eq:jko-energy-inequality}
+ \mathcal F_\beta(\mu^{k+1})
+ +\frac1{2h}W_2^2(\mu^{k+1},\mu^k)
+ \leq\mathcal F_\beta(\mu^k).
+\end{equation}
+Summing over $k$ controls the total discrete action
+$\sum_k W_2^2(\mu^{k+1},\mu^k)/h$.
+
+For the free energy $\mathcal F_\beta$ in \eqref{eq:free-energy} with $\mathcal F$  in \eqref{eq:interaction-energy}, a transparent sufficient
+convex regime is: $U$ is lower semicontinuous, $\lambda$-convex, and
+quadratically confining; $W$ is even, lower semicontinuous, convex, and
+bounded below; and $\beta\geq0$.  The confinement supplies compact sublevels,
+while the potential energy, interaction energy, and entropy have the required
+displacement-convexity properties.  For nonconvex interactions the discrete scheme can still have
+subsequential generalized minimizing-movement limits, but uniqueness and
+convergence of the whole family require additional structure and cannot be
+inferred from lower semicontinuity and compactness alone.  The original
+construction is due to Jordan, Kinderlehrer, and Otto
+\cite{JordanKinderlehrerOtto1998}; the metric theory, including weaker
+compactness and slope hypotheses, is developed in
+\cite[Chapters~2, 4, and 11]{AmbrosioGigliSavare2008}.
+
+\begin{remark}[The bridge to attention]
+Attention also defines a measure-dependent velocity field, and hence a
+transport equation in continuous depth.  The preceding geometry applies
+only if that field has the stronger variational form
+\[
+ \Phi[\mu](x)=-\nabla_x
+ \frac{\delta\mathcal E}{\delta\mu}[\mu](x)
+\]
+for some energy $\mathcal E$.  Symmetric pair interactions have this form;
+generic row-normalized softmax attention need not.
+Section~\ref{sec:continuous-depth} will use this
+criterion constructively: simple attention choices reveal a potential for a
+frozen measure, while also showing why self-consistency and row normalization
+obstruct an automatic global Wasserstein energy.
+\end{remark}
+
+\paragraph{\textbf{Literature and storyline.}}
+Optimal transport is an unusually clear example of an applied question
+creating new mathematical geometry.  Kantorovich's work grew from a 1938
+production-allocation problem at a plywood factory; the method led both to
+linear programming and to his formulation of mass transportation
+\cite{KantorovichMacTutor,Kantorovich1942,NobelKantorovich1975}.  For quadratic
+cost, Brenier later
+showed that, under the appropriate absolute-continuity hypothesis, the optimal
+map is the gradient of a convex function \cite{Brenier1991}.  Benamou and
+Brenier replaced the static coupling by a least-action path of densities and
+velocities \cite{BenamouBrenier2000}.  The next conceptual step was Jordan,
+Kinderlehrer, and Otto's observation that the Fokker--Planck equation can be
+constructed by repeated Wasserstein proximal minimization
+\cite{JordanKinderlehrerOtto1998}.  Thus a factory-allocation problem became a
+metric calculus for nonlinear PDEs.  This progression also explains the
+order of the mathematics here: the continuity equation supplies tangent
+velocities, Benamou--Brenier supplies their metric cost, first variations
+supply forces, and the JKO scheme turns formal dissipation into a construction.
+For attention, this history gives a precise test rather than an analogy: one
+must exhibit an energy whose Wasserstein gradient is the attention field.
+
+
+%%%%%%%%%%%%%% ============
+\section{Self-attention as an interacting particle system}
+\label{sec:self-attention}
+\paragraph{\textbf{Key question}}
+Which parts of self-attention are genuinely particle-like, and which
+architectural features fall outside the analogy?
+
+\subsection{One head: an exact empirical-measure formula}
+For tokens $x_1,\ldots,x_N\in\R^d$, let
+\[
+  q_i=Qx_i,\qquad k_j=Kx_j,\qquad v_j=Vx_j,
+\]
+where $Q,K:\R^d\to\R^{d_k}$ and $V:\R^d\to\R^{d_v}$, i.e, $Q,K\in \R^{d_k\times d}$ and $V\in \R^{d_v\times d}$.  To add the attention
+output to the residual stream, assume for now that $d_v=d$; otherwise an output
+map is inserted.  With temperature $\tau>0$ and $X=(x_1,\ldots,x_N)\in \R^{d\times N}$, define
+\begin{equation}\label{eq:attention-weights}
+  s_\theta(x,y)=\frac{\ip{Qx}{Ky}}{\tau},\qquad
+  a_{ij}(X)=\frac{e^{s_\theta(x_i,x_j)}}
+  {\sum_{r=1}^Ne^{s_\theta(x_i,x_r)}}.
+\end{equation}
+The commonly used temperature is $\tau=\sqrt{d_k}$.  A residual
+attention layer with step size $h_\ell$ is
+\begin{equation}\label{eq:attention-layer}
+    x_i^{\ell+1}=x_i^\ell+
+    h_\ell\sum_{j=1}^Na_{ij}(X^\ell)Vx_j^\ell.
+\end{equation}
+
+For any $\mu\in\cP(\R^d)$ for which the integrals are finite, define
+\begin{equation}\label{eq:attention-field}
+ \begin{split}
+    Z_\theta[\mu](x)
+      =\int e^{s_\theta(x,y)}\,\mu(\dd y),\quad 
+    \Phi_\theta[\mu](x)
+      =\frac{\displaystyle
+        \int e^{s_\theta(x,y)}Vy\,\mu(\dd y)}
+       {Z_\theta[\mu](x)}.
+ \end{split}
+\end{equation}
+In particular, for the empirical measure $\mu^{N}=\frac1N\sum_i\delta_{x_i}$, since the factors $1/N$ in numerator and denominator cancel, we have 
+\begin{equation}\label{eq:attention-exact}
+  Z_\theta[\mu^N](x) = \sum_{j=1}^N e^{s_\theta(x,x_j)},\quad  \Phi_\theta[\mu^{N}](x_i)
+  =\sum_{j=1}^N a_{ij}(X)Vx_j.
+\end{equation}
+Thus, the IPS representation of the idealized attention layer is an
+\emph{identity}: let 
+\[
+  T_{\theta,\mu}^{h}(x)=x+h\Phi_\theta[\mu](x),
+\]
+then the corresponding empirical-measure update is exactly
+\begin{equation}\label{eq:attention-pushforward}
+    \mu^{N,\ell+1}
+    =\bigl(T_{\theta^\ell,\mu^{N,\ell}}^{h_\ell}\bigr)_\#
+      \mu^{N,\ell}.
+\end{equation}
+Because the map itself depends on the input measure, this is a nonlinear
+pushforward operator.
+
+In matrix form, the attention layer is 
+\begin{equation}\label{eq:attention-matrix}
+ X^{\ell+1}=X^\ell+h_\ell\operatorname{Att}(X^\ell), \quad  \operatorname{Att}(X)=VXA^\top,\qquad
+  A=(a_{ij}(X))_{i,j=1}^N\in \R^{N\times N}.
+\end{equation}
+
+\begin{remark}[Row stochasticity is not a conservation law]
+The matrix $A=(a_{ij})$ is row stochastic:
+$a_{ij}\geq0$ and $\sum_j a_{ij}=1$.  It is generally neither symmetric nor
+column stochastic.  For the consensus-style dynamics
+\begin{equation}\label{eq:attn-consensus-form}
+  \dot x_i=\sum_j a_{ij}(X)(x_j-x_i),
+\end{equation}
+the mean satisfies
+\[
+  \frac{\dd}{\dd t}\frac1N\sum_ix_i
+  =\frac1N\sum_j\left(\sum_i a_{ij}-1\right)x_j.
+\]
+Hence the mean is conserved if $A$ is doubly stochastic, but not merely because
+it is row stochastic.  Standard attention in
+\eqref{eq:attention-layer} does not even have the difference form
+$x_j-x_i$.  It is therefore not automatically a physical pair force and need
+not conserve momentum, energy, or any token average.  Such structure must be
+designed.
+\end{remark}
+
+\begin{remark}[Temperature is a mathematical conditioning parameter]
+As $\tau\downarrow0$, attention approaches hard selection when the top score is
+separated, but the global Lipschitz estimate becomes poor near score ties.  As
+$\tau\uparrow\infty$, weights become nearly uniform and the interaction loses
+query specificity.  Temperature therefore trades selectivity against
+regularity; it is not merely a cosmetic scaling.
+\end{remark}
+
+The above idealized attention layer is permutation equivariant: if the input tokens are relabeled, the output tokens are relabeled in the same way.  This is a direct consequence of the empirical-measure representation \eqref{eq:attention-exact}.  The following proposition makes this statement precise. 
+\begin{proposition}[Permutation equivariance]\label{prop:perm-equiv}
+Without positional encodings or masks, the token map on column-token matrices
+$\operatorname{Att}:\R^{d\times N}\to\R^{d\times N}$ commutes with every
+relabeling:
+\[
+  \operatorname{Att}(XP)=\operatorname{Att}(X)P
+\]
+for each permutation matrix $P\in\R^{N\times N}$.
+\end{proposition}
+\begin{proof}
+Let $S(X)_{ij}=s_\theta(x_i,x_j)$,  and
+$A(X)=\operatorname{softmax}_{\rm row}(S(X)) $. That is,
+$$S(X)= \frac{1}{\tau} X^\top Q^\top K X, \quad A(X)_{ij}= \frac{\exp(S(X)_{ij})}{\sum_l \exp(S(X)_{il})}.$$
+Relabeling the columns of
+$X$ by $P$ relabels both queries and keys, so
+\[
+ S(XP)=P^\top S(X)P,
+ \qquad
+ A(XP)=P^\top A(X)P.
+\]
+The second identity holds because conjugation by $P$ reorders the rows and,
+within each row, the entries to which softmax is applied.  Since the columns
+of the value matrix are relabeled as $VXP$, formula
+\eqref{eq:attention-matrix} gives
+\[
+\begin{split}
+ \operatorname{Att}(XP)
+ &=VXP\,A(XP)^\top
+  =VXP\bigl(P^\top A(X)P\bigr)^\top\\
+ &=VXP P^\top A(X)^\top P
+  =VXA(X)^\top P
+  =\operatorname{Att}(X)P.
+\end{split}
+\]
+Equivalently, \eqref{eq:attention-field} depends only on the current query
+and the empirical measure, which is unchanged by a relabeling.
+\end{proof}
+
+Permutation equivariance does not mean that all tokens receive the same
+output.  The query $x_i$ distinguishes the particles.  It means only that
+renaming the tokens renames the outputs in the same way.
+
+
+
+\subsection{Regularity of the attention field}
+
+The next lemma shows that the attention field is locally Lipschitz in both the query and the empirical measure.  While the the softmax normalization is smooth, the Lipschitz constants can be large if the query and key vectors are large or if the temperature is small.  This is a mathematical manifestation of the fact that attention can be highly selective: if one key has a much higher score than all others, then the output is nearly constant in the query and insensitive to all other keys.  In this case, the attention field is nearly flat, so its derivative is small, but the Lipschitz constant is large because a small change in the query or in the empirical measure can change which key has the top score.  The lemma below quantifies this effect.
+
+Recall that $W_1$ is the $1$-Wasserstein distance defined in \eqref{eq:w1-definition}.  
+% \[
+%  W_1(\mu,\nu)
+%  =\inf_{\pi\in\Gamma(\mu,\nu)}
+%    \int_{\R^d\times\R^d}\abs{y-y'}\,\pi(\dd y,\dd y'),
+% \]
+% where $\Gamma(\mu,\nu)$ is the set of probability measures on
+% $\R^d\times\R^d$ with first marginal $\mu$ and second marginal $\nu$.
+
+\begin{lemma}[Local Lipschitz continuity]\label{lem:attention-lipschitz}
+Let $\mu,\nu$ be supported in the ball $B_R\subset\R^d$.  For fixed
+$Q,K,V$ and $\tau>0$, there are finite constants $L_x,L_\mu$ such that, for
+$x,x'\in B_R$,
+\begin{equation}\label{eq:attn-lip}
+ \abs{\Phi_\theta[\mu](x)-\Phi_\theta[\nu](x')}
+ \leq L_x\abs{x-x'}+L_\mu W_1(\mu,\nu), 
+\end{equation}
+and the constants $L_x,L_\mu$ depend only on $R,\tau$ and the operator norms of $Q,K,V$, and may grow
+exponentially in $\norm{Q}\norm{K}R^2/\tau$.
+\end{lemma}
+\begin{proof}
+Set
+\[
+ \kappa=\frac{\norm{Q}\norm{K}}{\tau},
+ \qquad S=\kappa R^2.
+\]
+For $x,y,y'\in B_R$, Cauchy--Schwarz gives
+\[
+ \abs{s_\theta(x,y)}\leq S,
+ \qquad
+ \abs{s_\theta(x,y)-s_\theta(x,y')}
+ \leq \kappa R\abs{y-y'}.
+\]
+Since the derivative of the exponential is bounded by $e^S$ on
+$[-S,S]$, the functions
+\[
+ f_x(y)=e^{s_\theta(x,y)},
+ \qquad g_x(y)=e^{s_\theta(x,y)}Vy
+\]
+satisfy
+\begin{align}
+ \norm{f_x}_\infty&\leq e^S,
+ &\Lip(f_x)&\leq e^S\kappa R,\notag\\
+ \norm{g_x}_\infty&\leq e^S\norm{V}R,
+ &\Lip(g_x)&\leq e^S\norm{V}(1+\kappa R^2).
+ \label{eq:softmax-integrand-bounds}
+\end{align}
+Write
+\[
+ N_\mu(x)=\int g_x(y)\,\mu(\dd y),
+ \qquad Z_\mu(x)=\int f_x(y)\,\mu(\dd y).
+\]
+In particular, $Z_\mu(x)\geq e^{-S}$ and
+$\abs{N_\mu(x)}\leq e^S\norm{V}R$.  The coupling bound
+\[
+ \left|\int f\,\dd\mu-\int f\,\dd\nu\right|
+ \leq\Lip(f)W_1(\mu,\nu)
+\]
+and \eqref{eq:softmax-integrand-bounds} imply
+\begin{align*}
+ \abs{N_\mu(x)-N_\nu(x)}
+ &\leq e^S\norm{V}(1+\kappa R^2)W_1(\mu,\nu),\\
+ \abs{Z_\mu(x)-Z_\nu(x)}
+ &\leq e^S\kappa R W_1(\mu,\nu).
+\end{align*}
+Using
+$a/b-c/d=(a-c)/b+c(d-b)/(bd)$ therefore gives
+\begin{align}
+ \abs{\Phi_\theta[\mu](x)-\Phi_\theta[\nu](x)}
+ &= \abs{\frac{N_\mu(x)}{Z_\mu(x)}-\frac{N_\nu(x)}{Z_\nu(x)}}
+ \leq
+ \frac{\abs{N_\mu(x)-N_\nu(x)}}{Z_\mu(x)}
+ +\frac{\abs{N_\nu(x)}
+          \abs{Z_\nu(x)-Z_\mu(x)}}{Z_\mu(x)Z_\nu(x)} \notag \\
+ &\leq \norm{V}\left[
+ e^{2S}(1+\kappa R^2)+e^{4S}\kappa R^2\right]
+ W_1(\mu,\nu) \notag \\
+ & = L_\mu W_1(\mu,\nu), \quad L_\mu=\norm{V}\left[
+ e^{2S}(1+\kappa R^2)+e^{4S}\kappa R^2\right].  \label{eq:attention-measure-lip}
+\end{align}
+
+
+It remains to vary the query.  For $x,x',y\in B_R$,
+\[
+ \abs{s_\theta(x,y)-s_\theta(x',y)}
+ \leq\kappa R\abs{x-x'}.
+\]
+The same mean-value and quotient calculations, now with the measure fixed,
+give 
+\begin{equation}\label{eq:attention-state-lip}
+ \abs{\Phi_\theta[\nu](x)-\Phi_\theta[\nu](x')}
+ \leq L_x\abs{x-x'},
+ \qquad
+ L_x=\norm{V}\kappa R^2(e^{2S}+e^{4S}).
+\end{equation}
+Finally, insert and subtract $\Phi_\theta[\nu](x)$ and combine
+\eqref{eq:attention-measure-lip}--\eqref{eq:attention-state-lip} to obtain
+\eqref{eq:attn-lip}.
+\end{proof}
+
+%%%%%%%%%%% -------------------
+\subsection{Marked particles, positions, and causal attention}
+Sequence models are not exchangeable after position is discarded.  A clean
+repair is to augment each particle by a mark:
+\[
+  z_i=(x_i,p_i,c_i)\in
+  \R^d\times\mathcal P_{\rm pos}\times\mathcal P_{\rm type},\qquad
+  \nu^N=\frac1N\sum_i\delta_{z_i}.
+\]
+Here $\mathcal P_{\rm pos}$ and $\mathcal P_{\rm type}$ are measurable
+mark spaces, not probability measures.  For a sequence of maximum length
+$L$, one may take the ordered discrete space
+$\mathcal P_{\rm pos}=\{1,\ldots,L\}$; for continuously indexed data it may
+instead be an ordered subset of $\R$.  The type space can be a finite set of
+token roles or modalities, or a Euclidean metadata space.  Thus neither space
+must be a subset of $\R$, although an order on $\mathcal P_{\rm pos}$ is
+needed for the causal mask below.
+
+Scores and values may depend on both states and marks.
+Precisely, $s_\theta$ is a learned measurable score map
+\[
+ s_\theta:
+ \bigl(\R^d\times\mathcal P_{\rm pos}\times\mathcal P_{\rm type}\bigr)^2
+ \longrightarrow\R,
+\]
+and
+$V_\theta:\R^d\times\mathcal P_{\rm pos}\times\mathcal P_{\rm type}
+\to\R^d$ is a learned value map.  For example, choose embeddings
+$e_{\rm pos}$ and $e_{\rm type}$, set
+\[
+ u(x,p,c)=\bigl(x,e_{\rm pos}(p),e_{\rm type}(c)\bigr)\in\R^D,
+\]
+and define
+\[
+ s_\theta(x,p,c;y,p',c')
+ =\frac{\ip{Qu(x,p,c)}{Ku(y,p',c')}}{\tau},
+ \qquad
+ V_\theta(y,p',c')=OVu(y,p',c'),
+\]
+with matrices of compatible dimensions.  A mask
+$m(p,p')\in\{0,1\}$ then gives
+\begin{equation}\label{eq:masked-field}
+  \Phi_\theta[\nu](x,p,c)
+  =\frac{\int m(p,p')e^{s_\theta(x,p,c;y,p',c')}
+                   V_\theta(y,p',c')
+     \,\nu(\dd y,\dd p',\dd c')}
+    {\int m(p,p')e^{s_\theta(x,p,c;y,p',c')}
+     \,\nu(\dd y,\dd p',\dd c')},
+\end{equation}
+provided at least one visible key has positive mass.  The causal mask is
+$m(p,p')=\one_{\{p'\leq p\}}$.  The marked cloud is still invariant under
+reordering the list of \emph{state--mark pairs}; it is not invariant under
+changing which state carries which position.  This distinction is essential:
+unmarked IPS is best matched to sets and exchangeable in-context examples,
+while marked IPS is needed for language and time series.
+
+\begin{remark}[Equivariance and positions]
+Let $\widetilde x_i=x_i+p_i$ for fixed absolute position vectors.  Permuting
+the $x_i$ while keeping the $p_i$ fixed need not commute with attention,
+whereas permuting the pairs $(x_i,p_i)$ does.  More precisely, retain the
+column-token convention $X,p\in\R^{d\times N}$ and define
+$\mathcal A(X,p)=\operatorname{Att}(X+p)$.  For a permutation matrix
+$P\in\R^{N\times N}$, content-only permutation generally fails:
+\[
+ \mathcal A(XP,p)\ne\mathcal A(X,p)P,
+\]
+whereas simultaneous permutation of the state--position pairs satisfies
+\[
+ \mathcal A(XP,pP)
+ =\operatorname{Att}\bigl((X+p)P\bigr)
+ =\operatorname{Att}(X+p)P
+ =\mathcal A(X,p)P.
+\]
+\end{remark}
+
+%%%%%%%%%%%%%% -----------------------
+\subsection{Multiple heads and the rest of a Transformer block}
+For $H$ heads with parameters
+$\theta_m=(Q_m,K_m,V_m,O_m,\tau_m)$, the field is
+\begin{equation}\label{eq:multihead-field}
+  \Phi_{\boldsymbol\theta}[\mu](x)
+  =\sum_{m=1}^H O_m
+   \frac{\int e^{\ip{Q_mx}{K_my}/\tau_m}V_my\,\mu(\dd y)}
+        {\int e^{\ip{Q_mx}{K_my}/\tau_m}\,\mu(\dd y)}.
+\end{equation}
+Here $m$ indexes a head and $\tau_m$ is its temperature.  Multi-head attention
+is therefore a multi-kernel interaction, not a random choice of one head.
+Heads can probe distinct geometries, but nothing in the definition prevents
+them from becoming redundant.
+
+A token-wise MLP can be included as a local field $f_\ell(x)$:
+\[
+ x_i^{\ell+1}=x_i^\ell+h_\ell
+ \bigl(f_\ell(x_i^\ell)+
+       \Phi_{\boldsymbol\theta_\ell}[\mu^{N,\ell}](x_i^\ell)\bigr).
+\]
+Examples of such local fields include the layer normalization, dropout, and gating operations that are standard in Transformer blocks. Layer normalization is token-wise in its usual form, but it is a nonlinear projection/rescaling rather than a small vector-field increment.
+For $x\in\R^d$, its usual form is
+\[
+ \operatorname{LN}_{a,b,\varepsilon}(x)
+ =a\odot
+ \frac{x-\bar x\mathbf 1}
+ {\sqrt{d^{-1}\norm{x-\bar x\mathbf 1}^2+\varepsilon}}+b,
+ \qquad
+ \bar x=\frac1d\sum_{r=1}^d x_r,
+\]
+where $a,b\in\R^d$ are learned, $\varepsilon>0$, and $\odot$ denotes
+componentwise multiplication.  A gate is a learned scalar or vector
+$g(x)\in[0,1]^d$ that modulates an update, for example
+$x^+=x+g(x)\odot F(x)$.  Dropout is a training-time random map
+$D_\rho(u)=\xi\odot u/(1-\rho)$, where the coordinates of $\xi$ are
+Bernoulli$(1-\rho)$; it therefore introduces randomness not present in a
+deterministic vector field.  Residual placement specifies where the skip
+connection is added.  Normalization order distinguishes, for example,
+\[
+ \text{pre-norm: }x^+=x+F(\operatorname{LN}(x)),
+ \qquad
+ \text{post-norm: }x^+=\operatorname{LN}(x+F(x)).
+\]
+These choices define different update maps and can therefore materially
+change stability, invariants, and continuous-depth limits.
+The single-field model should therefore be read as a controlled
+idealization of one sublayer, not as an exact description of every operation in
+a modern block
+
+\paragraph{\textbf{Literature and storyline.}}
+Attention entered neural sequence modeling as a learned alignment mechanism.
+Bahdanau, Cho, and Bengio let a decoder form an input-dependent weighted
+combination of encoder states instead of compressing an entire sentence into
+one fixed vector \cite{BahdanauEtAl2015}.  Vaswani and collaborators then made
+self-attention the principal interaction in the Transformer, removing the
+recurrent and convolutional backbone \cite{VaswaniEtAl2017}.  Uszkoreit's
+contemporaneous Google Research account emphasizes two design pressures:
+short paths between distant positions and computation that parallelizes over
+tokens \cite{UszkoreitGoogle2017}.  Those engineering choices lead directly to
+the mathematical object in \eqref{eq:attention-field}: every token interacts
+with the empirical measure of all tokens through a normalized, learned
+kernel.  The IPS formulation is therefore exact for the attention sublayer,
+but not for the whole Transformer block.  Positional encodings, masks,
+residual connections, normalization, and token-wise nonlinearities must be
+added explicitly.  This distinction is historically and mathematically
+important: the useful question is not whether a Transformer ``is'' a particle
+system, but which architectural operations admit a particle or mean-field
+description and what that description allows us to prove.
+
+\subsection{Connections forward}
+The exact nonlinear map \eqref{eq:attention-pushforward} is the shared object of
+the rest of Part~II.  Iterating it raises a numerical stability question;
+taking many small steps suggests a transport PDE; studying its geometry leads
+to consensus and collapse; and treating $\theta$ or the composite interaction
+as unknown leads to an inverse problem.  In Part~IV, a context-dependent
+attention field will be interpreted as an algorithm that infers a latent task.
+
+
+\begin{thebibliography}{99}
+
+\bibitem{AmbrosioGigliSavare2008}
+L.~Ambrosio, N.~Gigli, and S.~Savar\'e,
+\emph{Gradient Flows in Metric Spaces and in the Space of Probability
+Measures},
+2nd ed., Lectures in Mathematics ETH Z\"urich, Birkh\"auser, 2008.
+\href{https://doi.org/10.1007/978-3-7643-8722-8}
+{doi:10.1007/978-3-7643-8722-8}.
+
+\bibitem{BenamouBrenier2000}
+J.-D.~Benamou and Y.~Brenier,
+\emph{A computational fluid mechanics solution to the Monge--Kantorovich
+mass transfer problem},
+Numer. Math. \textbf{84} (2000), no.~3, 375--393.
+\href{https://doi.org/10.1007/s002110050002}
+{doi:10.1007/s002110050002}.
+
+\bibitem{Cavalier2008}
+L.~Cavalier,
+\emph{Nonparametric statistical inverse problems},
+Inverse Problems \textbf{24} (2008), no.~3, 034004.
+\href{https://doi.org/10.1088/0266-5611/24/3/034004}
+{doi:10.1088/0266-5611/24/3/034004}.
+
+\bibitem{BreschJabinWang2023}
+D.~Bresch, P.-E.~Jabin, and Z.~Wang,
+\emph{Mean field limit and quantitative estimates with singular attractive
+kernels},
+Duke Math. J. \textbf{172} (2023), no.~13, 2591--2641.
+\href{https://doi.org/10.1215/00127094-2022-0088}
+{doi:10.1215/00127094-2022-0088}.
+
+\bibitem{CarmonaDelarue2018}
+R.~Carmona and F.~Delarue,
+\emph{Probabilistic Theory of Mean Field Games with Applications I:
+Mean Field FBSDEs, Control, and Games},
+Probability Theory and Stochastic Modelling, vol.~83, Springer, 2018.
+\href{https://doi.org/10.1007/978-3-319-58920-6}
+{doi:10.1007/978-3-319-58920-6}.
+
+\bibitem{ChodronRosenzweigSerfaty2025}
+A.~Chodron de Courcel, M.~Rosenzweig, and S.~Serfaty,
+\emph{Sharp uniform-in-time mean-field convergence for singular periodic
+Riesz flows},
+Ann. Inst. H. Poincar\'e C Anal. Non Lin\'eaire
+\textbf{42} (2025), no.~2, 391--472.
+\href{https://doi.org/10.4171/AIHPC/105}{doi:10.4171/AIHPC/105}.
+
+\bibitem{FournierGuillin2015}
+N.~Fournier and A.~Guillin,
+\emph{On the rate of convergence in Wasserstein distance of the empirical
+measure},
+Probab. Theory Related Fields \textbf{162} (2015), no.~3--4, 707--738.
+\href{https://doi.org/10.1007/s00440-014-0583-7}
+{doi:10.1007/s00440-014-0583-7}.
+
+\bibitem{HaoRocknerZhang2024}
+Z.~Hao, M.~R\"ockner, and X.~Zhang,
+\emph{Strong convergence of propagation of chaos for McKean--Vlasov SDEs
+with singular interactions},
+SIAM J. Math. Anal. \textbf{56} (2024), no.~2, 2661--2713.
+\href{https://doi.org/10.1137/23M1556666}{doi:10.1137/23M1556666}.
+
+\bibitem{JabinWang2018}
+P.-E.~Jabin and Z.~Wang,
+\emph{Quantitative estimates of propagation of chaos for stochastic systems
+with $\dot W^{-1,\infty}$ kernels},
+Invent. Math. \textbf{214} (2018), no.~1, 523--591.
+\href{https://doi.org/10.1007/s00222-018-0808-y}
+{doi:10.1007/s00222-018-0808-y}.
+
+\bibitem{JordanKinderlehrerOtto1998}
+R.~Jordan, D.~Kinderlehrer, and F.~Otto,
+\emph{The variational formulation of the Fokker--Planck equation},
+SIAM J. Math. Anal. \textbf{29} (1998), no.~1, 1--17.
+\href{https://doi.org/10.1137/S0036141096303359}
+{doi:10.1137/S0036141096303359}.
+
+\bibitem{KaratzasShreve1991}
+I.~Karatzas and S.~E.~Shreve,
+\emph{Brownian Motion and Stochastic Calculus},
+Graduate Texts in Mathematics, vol.~113, 2nd ed., Springer, 1991.
+\href{https://doi.org/10.1007/978-1-4612-0949-2}
+{doi:10.1007/978-1-4612-0949-2}.
+
+\bibitem{BrunnerEtAl2020Identifiability}
+G.~Brunner, Y.~Liu, D.~Pascual, O.~Richter, M.~Ciaramita, and R.~Wattenhofer,
+\emph{On identifiability in Transformers},
+ICLR, 2020;
+\href{https://arxiv.org/abs/1908.04211}{arXiv:1908.04211}.
+
+\bibitem{ChenEtAl2026Quantitative}
+S.~Chen, Z.~Lin, Y.~Polyanskiy, and P.~Rigollet,
+\emph{Quantitative clustering in mean-field Transformer models},
+\href{https://arxiv.org/abs/2504.14697}{arXiv:2504.14697}, revised 2026.
+
+\bibitem{EdelmanEtAl2022InductiveBias}
+B.~L.~Edelman, S.~Goel, S.~Kakade, and C.~Zhang,
+\emph{Inductive biases and variable creation in self-attention mechanisms},
+Proc. 39th ICML, PMLR \textbf{162} (2022), 5793--5831.
+\href{https://proceedings.mlr.press/v162/edelman22a.html}{PMLR version}.
+
+\bibitem{GaoLangLu2025SelfTest}
+Y.~Gao, Q.~Lang, and F.~Lu,
+\emph{Self-test loss functions for learning weak-form operators and gradient
+flows},
+\href{https://arxiv.org/abs/2412.03506}{arXiv:2412.03506}, revised 2025.
+
+\bibitem{GeshkovskiEtAl2023Clusters}
+B.~Geshkovski, C.~Letrouit, Y.~Polyanskiy, and P.~Rigollet,
+\emph{The emergence of clusters in self-attention dynamics},
+Adv. Neural Inf. Process. Syst. \textbf{36} (2023), 57026--57037;
+\href{https://arxiv.org/abs/2305.05465}{arXiv:2305.05465}.
+
+\bibitem{GeshkovskiEtAl2024Metastability}
+B.~Geshkovski, H.~Koubbi, Y.~Polyanskiy, and P.~Rigollet,
+\emph{Dynamic metastability in the self-attention model},
+\href{https://arxiv.org/abs/2410.06833}{arXiv:2410.06833}, 2024.
+
+\bibitem{IldizEtAl2024Markov}
+M.~E.~Ildiz, Y.~Huang, Y.~Li, A.~S.~Rawat, and S.~Oymak,
+\emph{From self-attention to Markov models: Unveiling the dynamics of
+generative Transformers},
+\href{https://arxiv.org/abs/2402.13512}{arXiv:2402.13512}, 2024.
+
+\bibitem{KaragodinEtAl2024Causal}
+N.~Karagodin, Y.~Polyanskiy, and P.~Rigollet,
+\emph{Clustering in causal attention masking},
+NeurIPS, 2024;
+\href{https://arxiv.org/abs/2411.04990}{arXiv:2411.04990}.
+
+\bibitem{Rigollet2026MeanField}
+P.~Rigollet,
+\emph{The mean-field dynamics of Transformers},
+to appear in the Proceedings of the International Congress of Mathematicians,
+2026;
+\href{https://arxiv.org/abs/2512.01868}{arXiv:2512.01868}.
+
+\bibitem{LangLu2022MeanField}
+Q.~Lang and F.~Lu,
+\emph{Learning interaction kernels in mean-field equations of first-order
+systems of interacting particles},
+SIAM J. Sci. Comput. \textbf{44} (2022), no.~1, A260--A285.
+\href{https://doi.org/10.1137/20M1377072}{doi:10.1137/20M1377072}.
+
+\bibitem{LangLu2023Identifiability}
+Q.~Lang and F.~Lu,
+\emph{Identifiability of interaction kernels in mean-field equations of
+interacting particles},
+Found. Data Sci. \textbf{5} (2023), no.~4, 480--502.
+\href{https://doi.org/10.3934/fods.2023007}{doi:10.3934/fods.2023007}.
+
+\bibitem{LiEtAl2021Identifiability}
+Z.~Li, F.~Lu, M.~Maggioni, S.~Tang, and C.~Zhang,
+\emph{On the identifiability of interaction functions in systems of
+interacting particles},
+Stochastic Process. Appl. \textbf{132} (2021), 135--163.
+\href{https://doi.org/10.1016/j.spa.2020.10.005}
+{doi:10.1016/j.spa.2020.10.005}.
+
+\bibitem{LMT2022Stochastic}
+F.~Lu, M.~Maggioni, and S.~Tang,
+\emph{Learning interaction kernels in stochastic systems of interacting
+particles from multiple trajectories},
+Found. Comput. Math. \textbf{22} (2022), 1013--1067.
+\href{https://doi.org/10.1007/s10208-021-09521-z}
+{doi:10.1007/s10208-021-09521-z}.
+
+\bibitem{LuEtAl2019}
+F.~Lu, M.~Zhong, S.~Tang, and M.~Maggioni,
+\emph{Nonparametric inference of interaction laws in systems of agents from
+trajectory data},
+Proc. Natl. Acad. Sci. USA \textbf{116} (2019), no.~29, 14424--14433.
+\href{https://doi.org/10.1073/pnas.1822012116}
+{doi:10.1073/pnas.1822012116}.
+
+\bibitem{WangSeroussiLu2025Minimax}
+X.~Wang, I.~Seroussi, and F.~Lu,
+\emph{Optimal minimax rate of learning nonlocal interaction kernels},
+\href{https://arxiv.org/abs/2311.16852}{arXiv:2311.16852}, revised 2025.
+
+\bibitem{WeiLu2026Unlabeled}
+V.~Wei and F.~Lu,
+\emph{Learning interacting particle systems from unlabeled data},
+\href{https://arxiv.org/abs/2604.02581}{arXiv:2604.02581}, 2026.
+
+\bibitem{ZuckerEtAl2026AttentionMinimax}
+S.~Zucker, X.~Wang, F.~Lu, and I.~Seroussi,
+\emph{Minimax rates for learning pairwise interactions in attention-style
+models},
+ICLR, 2026;
+\href{https://arxiv.org/abs/2510.11789}{arXiv:2510.11789}.
+
+\bibitem{RevuzYor1999}
+D.~Revuz and M.~Yor,
+\emph{Continuous Martingales and Brownian Motion},
+Grundlehren der mathematischen Wissenschaften, vol.~293, 3rd ed.,
+Springer, 1999.
+\href{https://doi.org/10.1007/978-3-662-06400-9}
+{doi:10.1007/978-3-662-06400-9}.
+
+\bibitem{Sznitman1991}
+A.-S.~Sznitman,
+``Topics in propagation of chaos,'' in
+\emph{\'Ecole d'\'Et\'e de Probabilit\'es de Saint-Flour XIX---1989},
+Lecture Notes in Mathematics, vol.~1464, Springer, 1991, pp.~165--251.
+\href{https://doi.org/10.1007/BFb0085169}{doi:10.1007/BFb0085169}.
+
+\bibitem{Teschl2012}
+G.~Teschl,
+\emph{Ordinary Differential Equations and Dynamical Systems},
+Graduate Studies in Mathematics, vol.~140,
+American Mathematical Society, Providence, RI, 2012.
+\href{https://www.mat.univie.ac.at/~gerald/ftp/book-ode/ode.pdf}
+{Author's online edition}.
+
+\bibitem{Villani2009}
+C.~Villani,
+\emph{Optimal Transport: Old and New},
+Grundlehren der mathematischen Wissenschaften, vol.~338,
+Springer, 2009.
+\href{https://doi.org/10.1007/978-3-540-71050-9}
+{doi:10.1007/978-3-540-71050-9}.
+
+\bibitem{Wang2026}
+S.~Wang,
+\emph{Sharp local propagation of chaos for mean field particles with
+$W^{-1,\infty}$ kernels},
+J. Funct. Anal. \textbf{290} (2026), no.~3, Article~111240.
+\href{https://doi.org/10.1016/j.jfa.2025.111240}
+{doi:10.1016/j.jfa.2025.111240}.
+
+\bibitem{Kac1956}
+M.~Kac,
+\emph{Foundations of kinetic theory},
+in \emph{Proceedings of the Third Berkeley Symposium on Mathematical
+Statistics and Probability}, vol.~III, University of California Press,
+1956, pp.~171--197.
+\href{https://digicoll.lib.berkeley.edu/record/112857}
+{UC Berkeley Library}.
+
+\bibitem{Kac1985Enigmas}
+M.~Kac,
+\emph{Enigmas of Chance: An Autobiography},
+Harper \& Row, New York, 1985.
+
+\bibitem{McKean1966}
+H.~P.~McKean, Jr.,
+\emph{A class of Markov processes associated with nonlinear parabolic
+equations},
+Proc. Natl. Acad. Sci. USA \textbf{56} (1966), no.~6, 1907--1911.
+\href{https://doi.org/10.1073/pnas.56.6.1907}
+{doi:10.1073/pnas.56.6.1907}.
+
+\bibitem{Kantorovich1942}
+L.~V.~Kantorovich,
+\emph{On the translocation of masses},
+Management Sci. \textbf{5} (1958), no.~1, 1--4;
+English translation of Dokl. Akad. Nauk SSSR \textbf{37} (1942), 199--201.
+\href{https://doi.org/10.1287/mnsc.5.1.1}
+{doi:10.1287/mnsc.5.1.1}.
+
+\bibitem{NobelKantorovich1975}
+The Royal Swedish Academy of Sciences,
+\emph{Press release: The Sveriges Riksbank Prize in Economic Sciences in
+Memory of Alfred Nobel 1975}, 1975.
+\href{https://www.nobelprize.org/prizes/economic-sciences/1975/press-release/1000/}
+{Nobel Prize report}.
+
+\bibitem{KantorovichMacTutor}
+MacTutor History of Mathematics Archive,
+\emph{Leonid Vital'evich Kantorovich}, University of St Andrews.
+\href{https://mathshistory.st-andrews.ac.uk/Biographies/Kantorovich/}
+{Biographical profile} (accessed August~30, 2026).
+
+\bibitem{Brenier1991}
+Y.~Brenier,
+\emph{Polar factorization and monotone rearrangement of vector-valued
+functions},
+Comm. Pure Appl. Math. \textbf{44} (1991), no.~4, 375--417.
+\href{https://doi.org/10.1002/cpa.3160440402}
+{doi:10.1002/cpa.3160440402}.
+
+\bibitem{BahdanauEtAl2015}
+D.~Bahdanau, K.~Cho, and Y.~Bengio,
+\emph{Neural machine translation by jointly learning to align and translate},
+International Conference on Learning Representations, 2015.
+\href{https://arxiv.org/abs/1409.0473}{arXiv:1409.0473}.
+
+\bibitem{VaswaniEtAl2017}
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N.~Gomez,
+\L.~Kaiser, and I.~Polosukhin,
+\emph{Attention is all you need},
+Advances in Neural Information Processing Systems \textbf{30} (2017),
+5998--6008.
+\href{https://research.google/pubs/attention-is-all-you-need/}
+{Google Research publication page}.
+
+\bibitem{UszkoreitGoogle2017}
+J.~Uszkoreit,
+\emph{Transformer: A novel neural network architecture for language
+understanding},
+Google Research Blog, August~31, 2017.
+\href{https://research.google/blog/transformer-a-novel-neural-network-architecture-for-language-understanding/}
+{Google Research report}.
+
+\bibitem{HeEtAl2016ResNet}
+K.~He, X.~Zhang, S.~Ren, and J.~Sun,
+\emph{Deep residual learning for image recognition},
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition,
+2016, pp.~770--778.
+\href{https://doi.org/10.1109/CVPR.2016.90}
+{doi:10.1109/CVPR.2016.90}.
+
+\bibitem{E2017DynamicalSystems}
+W.~E,
+\emph{A proposal on machine learning via dynamical systems},
+Commun. Math. Stat. \textbf{5} (2017), no.~1, 1--11.
+\href{https://doi.org/10.1007/s40304-017-0103-z}
+{doi:10.1007/s40304-017-0103-z}.
+
+\bibitem{ChenEtAl2018NeuralODE}
+R.~T.~Q.~Chen, Y.~Rubanova, J.~Bettencourt, and D.~Duvenaud,
+\emph{Neural ordinary differential equations},
+Advances in Neural Information Processing Systems \textbf{31} (2018).
+\href{https://arxiv.org/abs/1806.07366}{arXiv:1806.07366}.
+
+\bibitem{DuvenaudResearchProfile}
+D.~Duvenaud,
+\emph{Research overview}, University of Toronto.
+\href{https://www.cs.toronto.edu/~duvenaud/}{Author's research page}
+(accessed August~30, 2026).
+
+\bibitem{DeGroot1974}
+M.~H.~DeGroot,
+\emph{Reaching a consensus},
+J. Amer. Statist. Assoc. \textbf{69} (1974), no.~345, 118--121.
+\href{https://doi.org/10.1080/01621459.1974.10480137}
+{doi:10.1080/01621459.1974.10480137}.
+
+\bibitem{CuckerSmale2007}
+F.~Cucker and S.~Smale,
+\emph{Emergent behavior in flocks},
+IEEE Trans. Automat. Control \textbf{52} (2007), no.~5, 852--862.
+\href{https://doi.org/10.1109/TAC.2007.895842}
+{doi:10.1109/TAC.2007.895842}.
+
+\bibitem{RigolletResearchProfile}
+P.~Rigollet,
+\emph{Research overview}, Massachusetts Institute of Technology.
+\href{https://math.mit.edu/~rigollet/index.html}{Author's research page}
+(accessed August~30, 2026).
+
+\bibitem{RigolletMITProfile2018}
+L.~Hardesty,
+\emph{From undisciplined to interdisciplinary}, MIT News, January~21, 2018.
+\href{https://news.mit.edu/2018/faculty-profile-philippe-rigollet-0122}
+{MIT profile}.
+
+\bibitem{Dobrushin1979}
+R.~L.~Dobrushin,
+\emph{Vlasov equations},
+Funct. Anal. Appl. \textbf{13} (1979), no.~2, 115--123.
+\href{https://doi.org/10.1007/BF01077243}
+{doi:10.1007/BF01077243}.
+
+\bibitem{VillaniFieldsProfile2010}
+International Mathematical Union,
+\emph{Fields Medal: C\'edric Villani}, 2010.
+\href{https://www.mathunion.org/fileadmin/IMU/ICM2010/offline/www.icm2010.in/prize-winners-2010/fields-medal-cedric-villani.html}
+{Official prize profile}.
+
+\bibitem{JHUFeiLuCAREER2023}
+Johns Hopkins University Department of Mathematics,
+\emph{Fei Lu awarded an NSF CAREER grant}, February~3, 2023.
+\href{https://mathematics.jhu.edu/2023/02/03/fei-lu-awarded-an-nsf-career-grant/}
+{Departmental report}.
+
+\bibitem{BrownEtAl2020GPT3}
+T.~B.~Brown et al.,
+\emph{Language models are few-shot learners},
+Advances in Neural Information Processing Systems \textbf{33} (2020),
+1877--1901.
+\href{https://proceedings.neurips.cc/paper_files/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html}
+{NeurIPS proceedings}.
+
+\bibitem{OpenAIGPT3Report2020}
+OpenAI,
+\emph{Language models are few-shot learners}, May~28, 2020.
+\href{https://openai.com/index/language-models-are-few-shot-learners/}
+{Research report}.
+
+\bibitem{LuEtAl2021DeepONet}
+L.~Lu, P.~Jin, G.~Pang, Z.~Zhang, and G.~E.~Karniadakis,
+\emph{Learning nonlinear operators via DeepONet based on the universal
+approximation theorem of operators},
+Nature Mach. Intell. \textbf{3} (2021), 218--229.
+\href{https://doi.org/10.1038/s42256-021-00302-5}
+{doi:10.1038/s42256-021-00302-5}.
+
+\bibitem{LiEtAl2021FNO}
+Z.~Li et al.,
+\emph{Fourier neural operator for parametric partial differential equations},
+International Conference on Learning Representations, 2021.
+\href{https://arxiv.org/abs/2010.08895}{arXiv:2010.08895}.
+
+\bibitem{SongEtAl2021ScoreSDE}
+Y.~Song, J.~Sohl-Dickstein, D.~P.~Kingma, A.~Kumar, S.~Ermon, and B.~Poole,
+\emph{Score-based generative modeling through stochastic differential
+equations},
+International Conference on Learning Representations, 2021.
+\href{https://arxiv.org/abs/2011.13456}{arXiv:2011.13456}.
+
+\bibitem{SongResearchProfile}
+Y.~Song,
+\emph{Research overview}.
+\href{https://yang-song.net/}{Author's research page}
+(accessed August~30, 2026).
+
+\bibitem{GronwallMacTutor}
+L.~Maligranda,
+\emph{Thomas Hakon Gronwall}, MacTutor History of Mathematics Archive,
+University of St Andrews.
+\href{https://mathshistory.st-andrews.ac.uk/Biographies/Gronwall/}
+{Biographical profile} (accessed August~30, 2026).
+
+\bibitem{ItoKyotoPrize1998}
+Inamori Foundation,
+\emph{Kiyosi It\^o}, Kyoto Prize laureate profile, 1998.
+\href{https://www.kyotoprize.org/en/laureates/kiyosi_ito/}
+{Official laureate profile}.
+
+\bibitem{DoobNASMemoir2016}
+D.~W.~Stroock,
+\emph{Joseph L. Doob, 1910--2004},
+Biographical Memoirs, National Academy of Sciences, 2016.
+\href{https://www.nasonline.org/wp-content/uploads/2024/06/doob-joseph.pdf}
+{National Academy memoir}.
+
+\end{thebibliography}
+
+\end{document}
