@@ -107,13 +107,14 @@ specific facts needed from each.  Statements are intentionally finite-horizon
 unless a dissipative hypothesis gives genuine long-time control.
 
 
+%%%%%%
 \section{Mean-field interacting particle systems}\label{sec:ips}
 \paragraph{\textbf{Key question}}
 What equation describes the limit of the empirical measure of $N$
 interacting particles as $N\to\infty$, and why does the limiting equation
 close?
 
-\subsection{The finite-particle system and its empirical measure}
+\subsection{The finite-particle system}
 Consider $N$ particles in $\R^d$ with pairwise interaction
 $b:\R^d\times\R^d\to\R^d$ and additive Brownian noise:
 \begin{equation}\label{eq:particles}
@@ -200,19 +201,24 @@ gives
  \leq 4\E\abs{B_t^i}^2=4dt.
 \] 
 
-Using the displayed bound for $F_i^N$, averaging over $i$, and setting
+Set
 \[
- A_N(t):=\frac1N\sum_{i=1}^N
- \E\sup_{0\leq r\leq t}\abs{X_r^i}^2,
+ u_i(t):=\E\sup_{0\leq r\leq t}\abs{X_r^i}^2,
+ \qquad
+ A_N(t):=\max_{1\leq i\leq N}u_i(t).
 \]
-we obtain
+For each $i$, the preceding estimate contains the integral of
+$u_i(s)+N^{-1}\sum_j u_j(s)$, which is at most $2A_N(s)$.  Since the
+initial variables have common law $\mu_0$, taking the maximum over $i$ yields
 \[
  A_N(t)
  \leq C_T\left(1+\int\abs{x}^2\mu_0(\dd x)
  +\int_0^t A_N(s)\dd s\right).
 \]
-Gronwall's inequality gives a bound independent of $N$.  Exchangeability of
-the system turns the averaged estimate into \eqref{eq:finite-moment}.
+Gronwall's inequality now gives \eqref{eq:finite-moment}.  Notice that the maximum is outside the
+expectation: the stronger quantity
+$\E[\max_i\sup_{r\leq t}\abs{X_r^i}^2]$ generally grows with $N$ and would
+not give the claimed uniform estimate.
 \end{proof}
 
 Singular forces such as Coulomb kernels are not covered by
@@ -291,7 +297,7 @@ quadratic-variation formula yield
   \leq\frac{\sigma^2t}{N}\norm{\nabla\varphi}_\infty^2.
 \end{equation}
 Thus the stochastic fluctuation of any fixed smooth observable is of size
-$N^{-1/2}$.  Notice that eqref{eq:martingale-bracket} depends on the test function, so it is not a metric between the entire empirical measure and its limit.
+$N^{-1/2}$.  Notice that \eqref{eq:martingale-bracket} depends on the test function, so it is not a metric between the entire empirical measure and its limit.
 
 For simplicity, we can write the weak-form equation as
 \[
@@ -380,10 +386,7 @@ $$\Phi(m)_t=\Law(X_t^m).$$
 
 We will show that $\Phi$ is a contraction on $\mathcal C_h$ for sufficiently small $h$ in two steps. 
 
-\paragraph{\textbf{Step 1. $\Phi$ maps $\mathcal C_h$ into itself.}}  We need to show that $\Phi(m)\in\mathcal C_h$, i.e., that $\Phi(m)_0=\mu_0$ and that $t\mapsto \Phi(m)_t$ is continuous in the Wasserstein-2 metric.
-The moment estimate for
-\eqref{eq:frozen-law-sde} and mean-square continuity of $X^m$ show that
-$\Phi(m)\in\mathcal C_h$.  We now verify these two facts.
+\paragraph{\textbf{Step 1. $\Phi$ maps $\mathcal C_h$ into itself.}}  We need to show that $\Phi(m)\in\mathcal C_h$, i.e., that $\Phi(m)_0=\mu_0$ and that $t\mapsto \Phi(m)_t$ is continuous in the Wasserstein-2 metric, which we obtain by showing mean-square continuity of $X^m$. 
 
 Since $m\in C([0,h];\cP_2(\R^d))$, we have
 \[
@@ -1905,6 +1908,1742 @@ taking many small steps suggests a transport PDE; studying its geometry leads
 to consensus and collapse; and treating $\theta$ or the composite interaction
 as unknown leads to an inverse problem.  In Part~IV, a context-dependent
 attention field will be interpreted as an algorithm that infers a latent task.
+
+\section{Continuous depth and kinetic limits}
+\label{sec:continuous-depth}
+\paragraph{\textbf{Key question}}
+What is gained, and what must be assumed, when layer number is replaced by time?
+
+\subsection{Residual layers as an Euler scheme}
+Set $h=T/L$ and $t_\ell=\ell h$.  A residual stack has the form
+\begin{equation}\label{eq:residual-euler}
+ x_i^{\ell+1}
+ =x_i^\ell+h\Phi_{\theta^\ell}[\mu^{N,\ell}](x_i^\ell).
+\end{equation}
+Suppose that the layer parameters sample a curve:
+$\theta^\ell\approx\theta_{t_\ell}$.  The proposed continuous-depth particle
+system is
+\begin{equation}\label{eq:token-ode}
+    \dot X_t^i=\Phi_{\theta_t}[\mu_t^N](X_t^i),
+    \qquad \mu_t^N=\frac1N\sum_i\delta_{X_t^i}.
+\end{equation}
+This interpretation is exactly the explicit Euler method applied to an ODE on
+$(\R^d)^N$.  It is useful because it imports consistency, stability, and step
+size questions from numerical analysis.
+
+\begin{assumption}[A controlled depth interpolation]\label{ass:depth}
+On a domain $D\subset\R^d$ containing both the exact trajectories and the
+explicit-Euler iterates considered below, assume uniformly in $t\in[0,T]$ that
+\begin{align}
+ \abs{\Phi_{\theta_t}[\mu](x)-\Phi_{\theta_t}[\nu](y)}
+ &\leq L_x\abs{x-y}+L_\mu W_1(\mu,\nu),
+ \label{eq:depth-lipschitz}\\
+ \abs{\Phi_{\theta_t}[\mu](x)-\Phi_{\theta_s}[\mu](x)}
+ &\leq L_t\abs{t-s},\qquad
+ \abs{\Phi_{\theta_t}[\mu](x)}\leq B.
+ \label{eq:depth-time}
+\end{align}
+The measures in these inequalities are supported in $D$.
+\end{assumption}
+Lemma~\ref{lem:attention-lipschitz} verifies the first condition for bounded
+token states and fixed bounded matrices.  The time condition is substantive:
+an arbitrary list of untied layer weights need not sample a regular curve.
+
+\begin{proposition}[Euler error, uniform in particle number]\label{prop:euler}
+Under Assumption~\ref{ass:depth}, let $X(t)$ solve \eqref{eq:token-ode} and let
+$x^\ell$ solve \eqref{eq:residual-euler} from the same initial cloud, with
+$\theta^\ell=\theta_{t_\ell}$.  Then
+\begin{equation}\label{eq:euler-error}
+ \max_{0\leq\ell\leq L}
+ \left(\frac1N\sum_{i=1}^N
+ \abs{x_i^\ell-X_{t_\ell}^i}^2\right)^{1/2}
+ \leq C_T h,
+\end{equation}
+where $C_T$ depends on $B,L_x,L_\mu,L_t,T$ but not on $N$.
+\end{proposition}
+\begin{proof}
+For $z=(z_1,\ldots,z_N)\in(\R^d)^N$, set
+\[
+ \norm{z}_N=\left(\frac1N\sum_{i=1}^N\abs{z_i}^2\right)^{1/2},
+ \qquad
+ F_t^N(z)_i=\Phi_{\theta_t}[\mu_z^N](z_i),
+ \quad
+ \mu_z^N=\frac1N\sum_{i=1}^N\delta_{z_i}.
+\]
+Matching particles with the same labels gives
+\begin{equation}\label{eq:matched-empirical-w1}
+ W_1(\mu_z^N,\mu_w^N)
+ \leq\frac1N\sum_{i=1}^N\abs{z_i-w_i}
+ \leq\norm{z-w}_N,
+\end{equation}
+where the last inequality is Cauchy--Schwarz.  Minkowski's inequality,
+\eqref{eq:depth-lipschitz}, and \eqref{eq:matched-empirical-w1} now yield
+\begin{equation}\label{eq:particle-field-lipschitz}
+ \norm{F_t^N(z)-F_t^N(w)}_N
+ \leq L_x\norm{z-w}_N+L_\mu W_1(\mu_z^N,\mu_w^N)
+ \leq L\norm{z-w}_N,
+ \qquad L:=L_x+L_\mu.
+\end{equation}
+The important point is that $L$ is independent of $N$.  Similarly,
+\begin{equation}\label{eq:particle-field-time}
+ \norm{F_t^N(z)-F_s^N(z)}_N\leq L_t\abs{t-s},
+ \qquad \norm{F_t^N(z)}_N\leq B.
+\end{equation}
+
+Let $X_t=(X_t^1,\ldots,X_t^N)$.  The last bound in
+\eqref{eq:particle-field-time} gives
+\begin{equation}\label{eq:token-time-increment}
+ \norm{X_s-X_{t_\ell}}_N
+ \leq\int_{t_\ell}^s\norm{F_r^N(X_r)}_N\dd r
+ \leq B(s-t_\ell),
+ \qquad t_\ell\leq s\leq t_{\ell+1}.
+\end{equation}
+Define the one-step defect of the exact solution by
+\[
+ \rho^{\ell+1}
+ :=X_{t_{\ell+1}}-X_{t_\ell}-hF_{t_\ell}^N(X_{t_\ell}).
+\]
+Using \eqref{eq:particle-field-lipschitz}--\eqref{eq:token-time-increment},
+\begin{align*}
+ \norm{\rho^{\ell+1}}_N
+ &\leq\int_{t_\ell}^{t_{\ell+1}}
+ \norm{F_s^N(X_s)-F_{t_\ell}^N(X_{t_\ell})}_N\dd s\\
+ &\leq\int_{t_\ell}^{t_{\ell+1}}
+ \left(L\norm{X_s-X_{t_\ell}}_N+L_t(s-t_\ell)\right)\dd s\\
+ &\leq C_0h^2,
+ \qquad C_0:=\frac12(LB+L_t).
+\end{align*}
+
+Let $e_\ell=\norm{x^\ell-X_{t_\ell}}_N$.  The Euler update and the
+definition of $\rho^{\ell+1}$ give the exact error identity
+\[
+ x^{\ell+1}-X_{t_{\ell+1}}
+ =x^\ell-X_{t_\ell}
+ +h\bigl(F_{t_\ell}^N(x^\ell)-F_{t_\ell}^N(X_{t_\ell})\bigr)
+ -\rho^{\ell+1}.
+\]
+Taking the normalized product norm, then applying the triangle inequality,
+\eqref{eq:particle-field-lipschitz}, and the one-step defect bound, yields
+\[
+\begin{split}
+ e_{\ell+1}
+ &\leq e_\ell
+ +h\norm{F_{t_\ell}^N(x^\ell)-F_{t_\ell}^N(X_{t_\ell})}_N
+ +\norm{\rho^{\ell+1}}_N\\
+ &\leq e_\ell+hLe_\ell+C_0h^2
+ =(1+hL)e_\ell+C_0h^2,
+\end{split}
+\]
+Since the discrete and continuous systems have the same initial data,
+$e_0=0$.
+Iteration of this scalar recursion gives, when $L>0$,
+\[
+ e_\ell
+ \leq C_0h^2\sum_{r=0}^{\ell-1}(1+hL)^r
+ =\frac{C_0}{L}h\bigl((1+hL)^\ell-1\bigr)
+ \leq\frac{C_0}{L}(e^{LT}-1)h.
+\]
+When $L=0$, the same recursion gives $e_\ell\leq C_0Th$.  This proves
+\eqref{eq:euler-error} with a constant independent of $N$.
+\end{proof}
+
+\begin{remark}[What an ODE limit does not say]
+The proposition justifies continuous depth along a family of networks whose
+step size tends to zero while a regular parameter curve is held fixed.  It does
+not say that a fixed 12- or 96-layer network with order-one, independently
+trained blocks is close to an autonomous ODE.  At best such a model is a
+finite, nonautonomous composition.  Finite-depth estimates are often more
+relevant than infinite-time equilibria.
+\end{remark}
+
+
+
+\subsection{The measure equation for continuous-depth attention}
+
+The general characteristic and continuity-equation framework has
+already been developed in Section~\ref{sec:gradient-flow}.  For attention, the
+only new ingredient is the particular self-consistent velocity
+$v_t=\Phi_{\theta_t}[\mu_t]$.  Indeed, for a smooth test function $\varphi$,
+the finite token ODE \eqref{eq:token-ode} gives the exact identity
+\begin{equation}\label{eq:token-weak}
+    \frac{\dd}{\dd t}\int\varphi\,\dd\mu_t^N
+    =\int\nabla\varphi(x)\cdot
+       \Phi_{\theta_t}[\mu_t^N](x)\,\mu_t^N(\dd x).
+       % \text{ i.e., }   \partial_t\mu_t^N+ \diver\bigl(\mu_t^N \Phi_{\theta_t}[\mu_t^N]\bigr)=0.
+ \end{equation}
+That is, $\mu_t^N$ is a weak solution of the continuity equation
+\begin{equation}\label{eq:attention-pde}
+    \partial_t\mu_t+
+    \diver\bigl(\mu_t\Phi_{\theta_t}[\mu_t]\bigr)=0,
+    \qquad \mu_{t=0}=\mu_0.
+\end{equation}
+Under Assumption~\ref{ass:depth}, its solution is transported by the
+self-consistent characteristics
+$\dot F_t(x)=\Phi_{\theta_t}[\mu_t](F_t(x))$ and
+$\mu_t=(F_t)_\#\mu_0$. If $\mu_t^N\to\mu_t$ strongly enough to pass through the nonlinear field, the measure $\mu_t$ is also a solution to the equation.
+
+
+%%%%%%%%%%%%%%%%
+\subsection{What the gradient-flow viewpoint says about attention}
+
+Continuous depth and gradient flow are different assertions.
+Equation~\eqref{eq:attention-pde} is a continuity equation for every
+sufficiently regular attention field. In the standard Wasserstein geometry it
+is a gradient descent of a functional $\mathcal F$ only when
+\begin{equation}\label{eq:attention-variational-criterion}
+ \Phi_\theta[\mu](x)
+ =-\nabla_x\frac{\delta\mathcal F}{\delta\mu}[\mu](x).
+\end{equation}
+Note that the parameter $\theta$ has to be fixed in this criterion. \footnote{It is possible to have a gradient flow with time-varying parameters $\theta_t$, but the functional $\mathcal F$ will also depend on time.  In this case, the energy balance becomes
+\[
+\frac{\dd}{\dd t}\mathcal F(\mu_t,t)
+ =\frac{\partial \mathcal F}{\partial t}(\mu_t,t)
+ -\int_{\R^d}\left|
+ \nabla\frac{\delta\mathcal F}{\delta\mu}[\mu_t](x)
+ \right|^2\mu_t(\dd x).
+\]
+It is nonpositive only when the explicit time dependence is dominated by the
+dissipation term.
+}
+
+We now test this criterion first for unnormalized identity attention (with $Q=K=V=I_d$), then for
+its row-normalized version.  This order separates the interaction energy from
+the state-dependent factor $Z_\mu^{-1}$ introduced by softmax
+normalization.
+
+\paragraph{\textbf{Unnormalized identity-attention field.}}
+Fix $\tau>0$, set
+\[
+ k_\tau(x,y)=e^{\ip{x}{y}/\tau},
+ \qquad
+ Z_\mu(x)=\int_{\R^d}k_\tau(x,y)\,\mu(\dd y),
+\]
+and define
+\begin{equation}\label{eq:unnormalized-identity-attention-field}
+ \widetilde\Phi[\mu](x)
+ :=\int_{\R^d}k_\tau(x,y)y\,\mu(\dd y).
+\end{equation}
+For the variational calculation, assume that $\mu$ is compactly supported;
+the same formulas hold under sufficient exponential-integrability and
+differentiability assumptions.  Introduce the similarity functional
+\begin{equation}\label{eq:identity-attention-energy}
+ \mathcal J_\tau(\mu)
+ :=\frac{\tau}{2}\iint_{\R^d\times\R^d}
+ k_\tau(x,y)\,\mu(\dd x)\mu(\dd y)
+ =\frac{\tau}{2}\int_{\R^d}Z_\mu(x)\,\mu(\dd x)
+\end{equation}
+and the interaction energy
+\begin{equation}\label{eq:attention-free-energy}
+ \mathcal F_{\mathrm{att}}(\mu):=-\mathcal J_\tau(\mu).
+\end{equation}
+The minus sign is essential: attention moves toward large similarity, so the
+positive similarity $\mathcal J_\tau$ increases while the energy
+$\mathcal F_{\mathrm{att}}$ decreases.
+
+Let $\eta$ be a signed measure with zero total mass.  Symmetry
+$k_\tau(x,y)=k_\tau(y,x)$ gives
+\[
+ \left.\frac{\dd}{\dd\varepsilon}
+ \mathcal J_\tau(\mu+\varepsilon\eta)\right|_{\varepsilon=0}
+ =\tau\int_{\R^d}Z_\mu(x)\,\eta(\dd x).
+\]
+Consequently,
+\begin{equation}\label{eq:identity-attention-first-variation}
+ \frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu](x)
+ =-\tau Z_\mu(x),
+ \qquad
+ -\nabla_x\frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu](x)
+ =\widetilde\Phi[\mu](x).
+\end{equation}
+Thus
+\begin{equation}\label{eq:unnormalized-attention-gradient-flow}
+ \partial_t\mu_t+\diver\bigl(\mu_t\widetilde\Phi[\mu_t]\bigr)=0
+ \quad\Longleftrightarrow\quad
+ \partial_t\mu_t
+ =\diver\left(\mu_t\nabla
+ \frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu_t]\right)
+\end{equation}
+is the standard $W_2$-gradient descent of
+$\mathcal F_{\mathrm{att}}$.  Along a smooth solution,
+\[
+ \frac{\dd}{\dd t}\mathcal F_{\mathrm{att}}(\mu_t)
+ =-\int_{\R^d}\left|
+ \nabla\frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu_t](x)
+ \right|^2\mu_t(\dd x)\leq0.
+\]
+Equivalently,
+\begin{equation}\label{eq:identity-attention-energy-ascent}
+ \frac{\dd}{\dd t}\mathcal J_\tau(\mu_t)
+ =\int_{\R^d}\left|\widetilde\Phi[\mu_t](x)\right|^2
+ \mu_t(\dd x)\geq0.
+\end{equation}
+
+\paragraph{\textbf{Normalized identity-attention.}}
+Row normalization gives
+\begin{equation}\label{eq:normalized-identity-attention-field}
+ \Phi[\mu](x)
+ :=\frac{\widetilde\Phi[\mu](x)}{Z_\mu(x)}.
+\end{equation}
+Since $Z_\mu(x)>0$, \eqref{eq:identity-attention-first-variation} yields
+\[
+ \Phi[\mu](x)
+ =-\frac1{Z_\mu(x)}
+ \nabla_x\frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu](x).
+\]
+The energy is unchanged, but softmax normalization multiplies the
+gradient by the positive factor $Z_\mu^{-1}$.  
+
+Define the positive operator $\mathsf K_\mu: C^\infty(\R^d) \to \mathcal E'_0(\R^d)$ by the weak form
+\begin{equation}\label{eq:normalized-attention-onsager-operator}
+ \left\langle\mathsf K_\mu\xi,\varphi\right\rangle
+ :=\int_{\R^d}\nabla\xi(x)\cdot\nabla\varphi(x)\,\frac{1}{Z_\mu}\mu(\dd x),
+ \qquad \varphi\in C^\infty(\R^d),
+\end{equation}
+where $\mathcal E'_0(\R^d)$ denotes the compactly supported distributions
+with zero total mass. Equivalently, 
+ \[
+ \mathsf K_\mu\xi
+ =-\diver\left(\frac{\mu}{Z_\mu}\nabla\xi\right)
+\]
+in the sense of distributions. The distributional range is necessary in
+general: the divergence of a vector-valued singular measure need not be a
+measure.  Testing \eqref{eq:normalized-attention-onsager-operator} with
+$\varphi=1$ shows that the output has zero total mass, and testing with
+$\varphi=\xi$ gives the positivity identity
+$
+ \left\langle\mathsf K_\mu\xi,\xi\right\rangle
+ =\int_{\R^d}\frac{1}{Z_\mu(x)}\abs{\nabla\xi(x)}^2\,\mu(\dd x)
+ \geq0.
+ $
+
+
+Then the normalized equation is the generalized gradient descent
+\begin{equation}\label{eq:normalized-attention-generalized-gradient-flow}
+ \partial_t\mu_t
+ =-\mathsf K_{\mu_t}
+ \frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu_t]
+ =\diver\left(\frac{\mu_t}{Z_{\mu_t}}
+ \nabla\frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu_t]\right)
+ =-\diver\bigl(\mu_t\Phi[\mu_t]\bigr).
+\end{equation}
+Its dissipation identity is
+\[
+ \frac{\dd}{\dd t}\mathcal F_{\mathrm{att}}(\mu_t)
+ =-\int_{\R^d}\frac1{Z_{\mu_t}(x)}
+ \left|\nabla
+ \frac{\delta\mathcal F_{\mathrm{att}}}{\delta\mu}[\mu_t](x)
+ \right|^2\mu_t(\dd x)\leq0,
+\]
+or, equivalently,
+\begin{equation}\label{eq:normalized-attention-energy-ascent}
+ \frac{\dd}{\dd t}\mathcal J_\tau(\mu_t)
+ =\int_{\R^d}\frac{\left|\widetilde\Phi[\mu_t](x)\right|^2}
+ {Z_{\mu_t}(x)}\,\mu_t(\dd x)\geq0.
+\end{equation}
+However, the normalized attention equation is not the standard $W_2$ gradient flow: the factor multiplying the gradient at $x$ depends nonlocally on the current law through $Z_\mu(x)$.
+
+Entropy makes the distinction between the two geometries especially clear.
+For $\mu(\dd x)=\rho(x)\dd x$, recall
+$\operatorname{Ent}(\rho)=\int\rho\log\rho\,\dd x$ from
+\eqref{eq:boltzmann-entropy}, and define
+\begin{equation}\label{eq:diffusive-attention-free-energy}
+ \mathcal F_{\mathrm{att},\beta}(\rho)
+ :=\mathcal F_{\mathrm{att}}(\rho)
+   +\beta\operatorname{Ent}(\rho),\qquad \beta>0.
+\end{equation}
+In the standard Wasserstein geometry this produces the noisy
+\emph{unnormalized} equation
+\begin{equation}\label{eq:unnormalized-noisy-attention-fp}
+ \partial_t\rho
+ =\diver\left(\rho\nabla
+ \frac{\delta\mathcal F_{\mathrm{att},\beta}}{\delta\rho}\right)
+ =-\diver\bigl(\rho\widetilde\Phi[\rho]\bigr)+\beta\Delta\rho.
+\end{equation}
+For the normalized equation, applying the same positive operator
+$\mathsf K_\rho$ to the same free energy produces instead the compatible
+weighted diffusion
+\begin{equation}\label{eq:normalized-weighted-diffusion}
+ \partial_t\rho  = - \mathsf K_\rho
+ \frac{\delta\mathcal F_{\mathrm{att},\beta}}{\delta\rho}
+ =-\diver\bigl(\rho\Phi[\rho]\bigr)
+  +\beta\diver\left(\frac1{Z_\rho}\nabla\rho\right),
+\end{equation}
+and
+\[
+ \frac{\dd}{\dd t}\mathcal F_{\mathrm{att},\beta}(\rho_t)
+ =-\int_{\R^d}\frac{\rho_t}{Z_{\rho_t}}
+ \left|\nabla
+ \frac{\delta\mathcal F_{\mathrm{att},\beta}}{\delta\rho}[\rho_t]
+ \right|^2\dd x\leq0.
+\]
+By contrast, adding ordinary Brownian noise to normalized attention gives
+\begin{equation}\label{eq:noisy-attention-fp}
+ \partial_t\rho+\diver\bigl(\rho\Phi[\rho]\bigr)=\beta\Delta\rho.
+\end{equation}
+The attention drift in \eqref{eq:noisy-attention-fp} contains the factor
+$Z_\rho^{-1}$, whereas its Brownian diffusion does not.  Consequently, that
+equation does not in general satisfy the preceding dissipation identity for
+$\mathcal F_{\mathrm{att},\beta}$.
+
+\paragraph{\textbf{Finite particles and the mean-field limit.}}
+The variational structure already exists before taking $N\to\infty$.  For
+$\mu^N=N^{-1}\sum_{i=1}^N\delta_{X^i}$, set
+\[
+ \mathcal F_{\mathrm{att}}^N(X)
+ :=\mathcal F_{\mathrm{att}}(\mu^N)
+ =-\frac{\tau}{2N^2}\sum_{i,j=1}^N
+ e^{\ip{X^i}{X^j}/\tau}.
+\]
+Differentiating both occurrences of $X^i$, including the diagonal term,
+gives
+\[
+ \nabla_{X^i}\mathcal F_{\mathrm{att}}^N(X)
+ =-\frac1N\widetilde\Phi[\mu^N](X^i).
+\]
+Consequently, the unnormalized particle dynamics are
+\begin{equation}\label{eq:unnormalized-attention-ips}
+ \dot X_t^i
+ =\frac1N\sum_{j=1}^N
+ e^{\ip{X_t^i}{X_t^j}/\tau}X_t^j
+ =-N\nabla_{X^i}\mathcal F_{\mathrm{att}}^N(X_t),
+\end{equation}
+while normalized identity attention satisfies
+\begin{equation}\label{eq:normalized-attention-ips}
+ \dot X_t^i
+ =\frac{\sum_{j=1}^N e^{\ip{X_t^i}{X_t^j}/\tau}X_t^j}
+ {\sum_{j=1}^N e^{\ip{X_t^i}{X_t^j}/\tau}}
+ =-\frac{N}{Z_{\mu_t^N}(X_t^i)}
+ \nabla_{X^i}\mathcal F_{\mathrm{att}}^N(X_t).
+\end{equation}
+Thus the first system is an ordinary Euclidean gradient descent after the
+energy-per-particle scaling by $N$, whereas the second has a positive diagonal, state-dependent rescaling.
+
+For either system, the empirical measure satisfies its continuity equation
+exactly in the weak sense of \eqref{eq:token-weak}.  On a compact state space,
+or on a finite interval on which the particle states have an a priori bound,
+the exponential kernel is locally Lipschitz and $Z_\mu$ is bounded away from
+zero.  The stability and propagation-of-chaos arguments of
+Section~\ref{sec:ips} then justify passage from the finite IPS to
+\eqref{eq:unnormalized-attention-gradient-flow} or
+\eqref{eq:normalized-attention-generalized-gradient-flow}.  On all of
+$\R^d$, this conclusion requires moment or growth estimates because the
+exponential score is not globally Lipschitz.
+
+If independent Brownian noise is added to a drift
+$\Psi\in\{\widetilde\Phi,\Phi\}$, the particle model is
+\begin{equation}\label{eq:noisy-attention-sde}
+ \dd X_t^i=\Psi[\mu_t^N](X_t^i)\dd t+\sqrt{2\beta}\,\dd B_t^i.
+\end{equation}
+Its mean-field equation is \eqref{eq:noisy-attention-fp} with $\Phi$
+replaced by $\Psi$.  The entropy interpretation is a single standard
+Wasserstein gradient flow when $\Psi=\widetilde\Phi$; for
+$\Psi=\Phi$, ordinary Brownian diffusion gives
+\eqref{eq:noisy-attention-fp}.
+
+The weighted diffusion in
+\eqref{eq:normalized-weighted-diffusion} can be realized by multiplicative
+noise, but the It\^o equation also needs a drift correction.  Assuming that
+$Z_{\rho_t}$ is smooth and bounded away from zero, let
+$\rho_t=\Law(X_t)$ and consider
+\begin{equation}\label{eq:normalized-weighted-sde}
+\begin{aligned}
+ \dd X_t={}&\left[\Phi[\rho_t](X_t)
+ +\beta\nabla\left(Z_{\rho_t}^{-1}\right)(X_t)\right]\dd t +\sqrt{\frac{2\beta}{Z_{\rho_t}(X_t)}}\,\dd B_t.
+ \end{aligned}
+\end{equation}
+The Fokker--Planck equation associated with
+\eqref{eq:normalized-weighted-sde} is
+\[
+\begin{aligned}
+ \partial_t\rho_t
+ &=-\diver\left(\rho_t
+    \left[\Phi[\rho_t]+\beta\nabla Z_{\rho_t}^{-1}\right]\right)
+   +\beta\Delta\left(\rho_t Z_{\rho_t}^{-1}\right)\\
+ &=-\diver\bigl(\rho_t\Phi[\rho_t]\bigr)
+   +\beta\diver\left(Z_{\rho_t}^{-1}\nabla\rho_t\right),
+ \end{aligned}
+\]
+which is exactly \eqref{eq:normalized-weighted-diffusion}. 
+% Here, the second line use the identity $\Delta{(fg)} = \diver (g \nabla f) + \diver (f \nabla g)$ with $f=Z_{\rho_t}^{-1}$ and $g=\rho_t$.
+With the
+same multiplicative noise but without the correction
+$\beta\nabla Z_{\rho_t}^{-1}$, the diffusion term would instead be
+$\beta\Delta(\rho_t/Z_{\rho_t})$.
+
+\begin{example}[A frozen-measure potential]
+\label{ex:identity-attention-potential}
+Freeze $\mu$ and define
+\[
+Z_\mu(x):= \int e^{\ip{x}{y}/\tau}\,\mu(\dd y),\qquad
+ P_\mu(x):=\tau\log Z_\mu(x),\qquad
+ \pi_x^\mu(\dd y):=\frac{e^{\ip{x}{y}/\tau}}{Z_\mu(x)}\,\mu(\dd y).
+\]
+Differentiation with respect to the query gives
+\begin{equation}\label{eq:identity-attention-log-partition}
+ \nabla P_\mu(x)=\Phi[\mu](x),\qquad
+ \nabla^2P_\mu(x)=\frac1\tau
+ \operatorname{Cov}_{\pi_x^\mu}(Y)\succeq0.
+\end{equation}
+To derive the Hessian, differentiate the partition function twice:
+\begin{align*}
+ \nabla Z_\mu(x)   & = \int e^{\ip{x}{y}/\tau}\frac{y}{\tau}\,\mu(\dd y) 
+                     =\frac{Z_\mu(x)}{\tau}\E_{\pi_x^\mu}[Y],\\
+ \nabla^2 Z_\mu(x) & = \int e^{\ip{x}{y}/\tau}\frac{yy^\top}{\tau^2}\,\mu(\dd y)
+                     =\frac{Z_\mu(x)}{\tau^2}\E_{\pi_x^\mu}[YY^\top].
+\end{align*}
+Since $P_\mu=\tau\log Z_\mu$, it follows that
+\[
+ \begin{aligned}
+ \nabla^2P_\mu(x) = \nabla\left(\tau\frac{\nabla Z_\mu(x)}{Z_\mu(x)}\right)
+ &=\tau\left(
+ \frac{\nabla^2Z_\mu(x)}{Z_\mu(x)}
+ -\frac{\nabla Z_\mu(x)\nabla Z_\mu(x)^\top}{Z_\mu(x)^2}
+ \right)\\
+ &=\frac1\tau\left(
+ \E_{\pi_x^\mu}[YY^\top]
+ -\E_{\pi_x^\mu}[Y]\E_{\pi_x^\mu}[Y]^\top
+ \right)
+ =\frac1\tau\operatorname{Cov}_{\pi_x^\mu}(Y).
+ \end{aligned}
+\]
+
+Hence residual attention with a frozen key--value law,
+$\dot x_t=\Phi[\mu](x_t)$, is gradient ascent of the convex log-partition
+potential:
+\[
+ \frac{\dd}{\dd t}P_\mu(x_t)
+ =\left|\nabla P_\mu(x_t)\right|^2\geq0.
+\]
+This identity makes $P_\mu$ a Lyapunov function and rules out a
+nonstationary periodic orbit, but it does not by itself imply convergence:
+gradient ascent of a nonconfining convex function can escape to infinity.
+
+The consensus modification has a different and more useful energy:
+\begin{equation}\label{eq:identity-attention-consensus-potential}
+ \dot x_t=\Phi[\mu](x_t)-x_t=-\nabla V_\mu(x_t),
+ \qquad
+ V_\mu(x):=\frac12\abs{x}^2-P_\mu(x).
+\end{equation}
+Now
+\[
+ \frac{\dd}{\dd t}V_\mu(x_t)=-|\nabla V_\mu(x_t)|^2\leq0,
+\]
+and equilibria are precisely the fixed points
+$x_\star=\Phi[\mu](x_\star)$ satisfying
+$0=\nabla V_\mu(x_\star)=x_\star-\nabla P_\mu(x_\star)$. If
+$\supp(\mu)\subset B_R(0)$, then
+\[
+ \nabla^2V_\mu(x)
+ =I-\frac1\tau\operatorname{Cov}_{\pi_x^\mu}(Y)
+ \succeq\left(1-\frac{R^2}{\tau}\right)I.
+\]
+Thus, when $\tau>R^2$, $V_\mu$ is strongly convex, it has a unique
+equilibrium, and
+\[
+ |x_t-x_\star|
+ \leq e^{-(1-R^2/\tau)t}|x_0-x_\star|.
+\]
+For smaller temperature the potential can be nonconvex, so several attracting
+critical points, saddles, and long plateaus may coexist.  This is the
+variational source of initialization-dependent clustering and metastability.
+In the self-consistent spherical model, compactness and analyticity allow
+Łojasiewicz arguments to upgrade energy convergence to convergence of
+finite-particle trajectories, while well-separated clusters can persist for
+exponentially long times
+\cite{GeshkovskiEtAl2024Metastability,Rigollet2026MeanField}.  A Lyapunov
+function therefore identifies the direction of evolution, but convexity or a
+separate critical-point analysis is still needed for a unique equilibrium and
+a quantitative rate.
+\end{example}
+
+\paragraph{\textbf{Scope and limitations of the variational structure.}}
+The preceding calculation uses two special facts: the identity score is
+symmetric in $x,y$, and the value vector $y$ is exactly the query gradient
+of the score.  For general matrices, the unnormalized field is
+\[
+ \widetilde\Phi_{Q,K,V}[\mu](x)
+ =\int e^{x^\top Q^\top Ky/\tau}Vy\,\mu(\dd y).
+\]
+Writing $A=Q^\top K$, the gradient of
+$\tau e^{x^\top Ay/\tau}$ with respect to $x$ is
+$e^{x^\top Ay/\tau}Ay$.  A symmetric pair energy therefore requires special
+algebraic compatibility, for example $A=A^\top$ and $V$ proportional to
+$A$.  Generic $Q,K,V$ do not satisfy this condition, and row normalization
+cannot create an energy when the underlying pair field is not variational.
+
+Several further qualifications matter.  Causal masks destroy pair symmetry;
+time-dependent or untied parameters produce a time-dependent energy with an
+additional $\partial_t\mathcal F_t$ term; value biases, MLPs, normalization,
+and residual forcing add vector fields that need not share the same potential.
+Even when a continuous-depth energy exists, nonconvexity permits multiple
+equilibria and metastability, and a finite residual layer is only a forward
+Euler step, whose energy monotonicity may require a step-size restriction.
+Thus identity attention---and specially tied symmetric extensions---has the
+gradient structure derived above; a generic Transformer block inherits the
+continuity-equation description, but not this Lyapunov theory.
+
+% \begin{exercise}[Noisy attention]
+% Starting from \eqref{eq:noisy-attention-sde}, derive
+% \eqref{eq:noisy-attention-fp} in weak form, including the quadratic-variation
+% term.  Identify the free energy when
+% $\Phi[\mu]=-\nabla(U+W*\mu)$.
+% \end{exercise}
+% \ifexeSolutionOn
+% \begin{proof}[Solution]
+% Let $\mu_t^N=N^{-1}\sum_i\delta_{X_t^i}$ and
+% $\varphi\in C_b^2(\R^d)$.  It\^o's formula gives
+% \[
+%  \dd\varphi(X_t^i)
+%  =\nabla\varphi(X_t^i)\cdot
+%    \Phi_{\theta_t}[\mu_t^N](X_t^i)\dd t
+%  +\beta\Delta\varphi(X_t^i)\dd t
+%  +\sqrt{2\beta}\nabla\varphi(X_t^i)\cdot\dd B_t^i.
+% \]
+% The coefficient of $\Delta\varphi$ is
+% $\frac12(2\beta)=\beta$.  Averaging over $i$ yields the exact finite-particle
+% identity
+% \begin{align}
+%  \dd\int\varphi\,\dd\mu_t^N
+%  &=\int\left[
+%  \nabla\varphi\cdot\Phi_{\theta_t}[\mu_t^N]
+%  +\beta\Delta\varphi\right]\dd\mu_t^N\dd t
+%  +\dd M_t^{N,\varphi},\label{eq:noisy-attention-weak-finite}\\
+%  M_t^{N,\varphi}
+%  &=\frac{\sqrt{2\beta}}{N}\sum_{i=1}^N
+%  \int_0^t\nabla\varphi(X_s^i)\cdot\dd B_s^i.
+% \end{align}
+% Independence of the Brownian motions gives
+% \begin{equation}\label{eq:noisy-attention-bracket}
+%  \left\langle M^{N,\varphi}\right\rangle_t
+%  =\frac{2\beta}{N^2}\sum_{i=1}^N
+%  \int_0^t\abs{\nabla\varphi(X_s^i)}^2\dd s
+%  \leq\frac{2\beta t}{N}\norm{\nabla\varphi}_\infty^2.
+% \end{equation}
+% By It\^o's isometry and Doob's inequality, the bracket estimate implies
+% the stronger maximal bound
+% \[
+%  \E\sup_{0\leq t\leq T}\abs{M_t^{N,\varphi}}^2
+%  \leq4\E\abs{M_T^{N,\varphi}}^2
+%  =4\E\left\langle M^{N,\varphi}\right\rangle_T
+%  \leq\frac{8\beta T}{N}\norm{\nabla\varphi}_\infty^2.
+% \]
+% Thus the martingale vanishes in
+% $L^2(\Omega;C([0,T]))$ for each fixed test function.  If the
+% empirical measures and nonlinear fields converge strongly enough to pass to
+% the drift, the limiting weak equation is
+% \[
+%  \int\varphi\,\dd\mu_t-\int\varphi\,\dd\mu_0
+%  =\int_0^t\int\left[
+%  \nabla\varphi\cdot\Phi_{\theta_s}[\mu_s]
+%  +\beta\Delta\varphi\right]\dd\mu_s\dd s,
+% \]
+% which is precisely the weak form of \eqref{eq:noisy-attention-fp}.
+
+% Now suppose that $W(z)=W(-z)$ and
+% $\Phi[\mu]=-\nabla(U+W*\mu)$.  For $\mu(\dd x)=\rho(x)\dd x$, define
+% \begin{equation}\label{eq:noisy-attention-free-energy}
+%  \mathcal F_\beta(\rho)
+%  =\int U\rho\,\dd x
+%  +\frac12\iint W(x-y)\rho(x)\rho(y)\dd x\dd y
+%  +\beta\int\rho\log\rho\,\dd x.
+% \end{equation}
+% Its first variation is
+% $\delta\mathcal F_\beta/\delta\rho
+% =U+W*\rho+\beta(1+\log\rho)$.  Hence, formally,
+% \[
+%  \partial_t\rho
+%  =\diver\left(\rho\nabla
+%  \frac{\delta\mathcal F_\beta}{\delta\rho}\right)
+%  =\diver\bigl(\rho\nabla(U+W*\rho)\bigr)+\beta\Delta\rho,
+% \]
+% so \eqref{eq:noisy-attention-free-energy} is the required free energy.
+% \end{proof}
+%\fi
+
+%%%%%%%%%%%%%%----------
+\subsection{Four limits and a warning about their order}
+There are several distinct regimes:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+ \item fixed $N$ and many small layers: Euler convergence to
+ \eqref{eq:token-ode};
+ \item fixed finite depth and $N\to\infty$: convergence of iterated nonlinear
+ measure maps;
+ \item simultaneous $N,L\to\infty$: both particle and discretization errors
+ must be controlled, preferably with constants uniform in depth;
+ \item $d\to\infty$ as well: score concentration and temperature scaling can
+ change the limiting interaction.
+\end{enumerate}
+These limits need not commute.  In particular, a finite-time propagation of
+chaos estimate may grow like $e^{CT}$ and become useless on the long time scale
+needed for clustering or metastable transitions.
+
+A genuine gradient-flow structure can change this long-time picture but
+does not remove the need to distinguish the limits.  For example, geodesic
+convexity of the energy can yield contractivity of the measure evolution and
+replace an exponentially growing stability constant by a uniform or decaying
+one.  The calculation in Example~\ref{ex:identity-attention-potential} shows
+that an energy identity alone is not enough for contractivity: one must
+also prove geodesic or ordinary convexity, or another mechanism that controls
+the critical points and the dissipation rate.
+
+\paragraph{\textbf{Literature and storyline.}}
+The continuous-depth interpretation was assembled from several ideas rather
+than introduced by one paper.  Residual networks first made a deep layer look
+like the increment $x^{\ell+1}-x^\ell=F_\ell(x^\ell)$
+\cite{HeEtAl2016ResNet}.  E then argued explicitly that deep architectures
+should be organized using dynamical-systems and numerical-discretization
+principles \cite{E2017DynamicalSystems}.  Chen, Rubanova, Bettencourt, and
+Duvenaud parameterized a hidden-state derivative and used an ODE solver in
+place of a prescribed layer grid \cite{ChenEtAl2018NeuralODE}.  The paper
+develops adaptive evaluation and memory-efficient training, while Duvenaud's
+research page summarizes the central object as a continuous-depth neural
+network \cite{DuvenaudResearchProfile}.  For interacting tokens, however, the state is
+the entire empirical measure, so depth simultaneously evolves each particle
+and the field seen by every other particle.  This is why the section develops
+the argument in the order Euler consistency $\to$ particle ODE $\to$
+continuity equation $\to$ stability of the joint limits.  ``Many layers'' is
+not by itself a theorem about an ODE: one needs residual scaling, a controlled
+interpolation of the parameters, and bounds uniform in the depth and particle
+limits.
+
+
+\subsection{Connections forward}
+Continuous-depth attention defines a nonlinear solution operator
+$\mu_0\mapsto\mu_T$, with the current token law entering the velocity that
+transports it.  The Euler estimate separates approximation by depth from
+approximation by particle number, while the four-limit warning records why
+neither can be hidden inside the other.
+
+The gradient-flow test gives a
+three-way distinction: symmetric unnormalized identity attention is a standard
+Wasserstein gradient flow; normalized identity attention is a generalized
+gradient flow in which the gradient is multiplied by $Z_\mu^{-1}$; and
+generic $Q,K,V$ attention has, in
+general, only the transport description.  The linear consensus example in
+Section~\ref{sec:ips} is the quadratic-potential case
+$W(z)=\frac12\abs z^2$.  The self-consistent identity-softmax energy is
+\eqref{eq:attention-free-energy}, while the log-partition potential
+\eqref{eq:identity-attention-log-partition} describes one query when the
+key--value law is frozen.  These distinctions will guide
+the analysis of clustering, stability, and the inverse problem in the
+subsequent sections.
+
+\section{Clustering, consensus, and collapse}
+\label{sec:clustering}
+\paragraph{\textbf{Key question}}
+When does nonlocal averaging create useful clusters, consensus, or collapse?
+
+\subsection{A consensus model}
+Consider
+\begin{equation}\label{eq:consensus}
+    \dot X_t^i=\sum_{j=1}^Na_{ij}(t)(X_t^j-X_t^i),
+    \qquad a_{ij}(t)\geq0,\qquad\sum_ja_{ij}(t)=1.
+\end{equation}
+The weights may depend on the entire configuration, as attention weights do,
+but the first result uses only their sign and row sums.  For a unit vector $u$,
+set
+\begin{equation}\label{eq:directional-diameter}
+ M_u(t)=\max_i\ip{u}{X_t^i},\quad
+ m_u(t)=\min_i\ip{u}{X_t^i},\quad
+ D_u(t)=M_u(t)-m_u(t).
+\end{equation}
+The quantity $D_u(t)$ is the \emph{directional diameter} of the configuration.
+
+
+
+Note first that the directional diameter is nonincreasing. To see this, write $z_i(t)=\ip{u}{X_t^i}$.  The projected velocity is simply the scalar derivative of this projection:
+\begin{equation}\label{eq:projected-velocity}
+ \dot z_i(t)=\ip{u}{\dot X_t^i}
+ =\sum_{j=1}^Na_{ij}(t)(z_j(t)-z_i(t)).
+\end{equation}
+If $z_i=M_u$, every difference $z_j-z_i$ is nonpositive, so
+$\dot z_i\leq0$; if $z_i=m_u$, every difference is nonnegative, so
+$\dot z_i\geq0$.  Since each $z_i$ is continuously differentiable,
+the finite maximum $M_u$ and minimum $m_u$ are locally Lipschitz.  Therefore
+$D_u=M_u-m_u$ is absolutely continuous and differentiable almost everywhere,
+but it need not be differentiable when the identity of an extremizer changes
+(the elementary example $\max\{t,-t\}=|t|$ shows why).  At every time, tied
+extrema are handled by the upper and lower right Dini derivatives.\footnote{For
+a real function $f$, the upper and lower right Dini derivatives are
+$D^+f(t)=\limsup_{h\downarrow0}[f(t+h)-f(t)]/h$ and
+$D_+f(t)=\liminf_{h\downarrow0}[f(t+h)-f(t)]/h$.  For a finite maximum or
+minimum of $C^1$ functions, the active-index formulas are recorded in
+\eqref{eq:appendix-dini-maximum}.} In fact,
+\[
+ D^+M_u(t)=\max_{i:z_i(t)=M_u(t)}\dot z_i(t)\leq0,
+ \qquad
+ D_+m_u(t)=\min_{i:z_i(t)=m_u(t)}\dot z_i(t)\geq0,
+\]
+which follow by choosing an index that realizes the extremum at $t+h$, passing
+to a constant-index subsequence as $h\downarrow0$, and applying the first-order
+expansion of that $z_i$; the reverse inequality follows by testing every index
+that is active at time $t$.
+Consequently $D_u'(t)\leq0$ at almost every differentiability time, so
+absolute continuity implies that $D_u$ is nonincreasing. Theorem~\ref{thm:diameter} below shows that under the uniform communication assumption, the directional diameter contracts exponentially, and the Euclidean diameter contracts as well.
+
+Also, the convex hull of the configuration is forward invariant.
+Let
+$C_0=\operatorname{co}\{X_0^1,\ldots,X_0^N\}$ be the smallest convex set
+containing the initial configuration.  Its support function is
+$h_{C_0}(u)=\max_i\ip{u}{X_0^i}=M_u(0)$, and the supporting-half-space
+representation of a compact convex set gives
+\[
+ C_0=\bigcap_{|u|=1}\{x\in\R^d:\ip{u}{x}\leq M_u(0)\}.
+\]
+For every $i$ and every unit $u$,
+$\ip{u}{X_t^i}\leq M_u(t)\leq M_u(0)$; hence $X_t^i\in C_0$.  This is what it
+means for the convex hull to be forward invariant: pure averaging cannot
+create a token state outside the region spanned by the initial tokens.  The
+fact is useful in three ways.  It supplies the a priori bound
+$\max_i|X_t^i|\leq\max_i|X_0^i|$, keeps state-dependent attention scores in a
+controlled range, and identifies a structural limitation of the consensus
+model.  Value maps, MLPs, or residual forcing can move representations outside
+this hull, so hull invariance should not be attributed to a general
+Transformer block.
+
+
+
+\begin{assumption}[Uniform communication]\label{ass:uniform-mixing}
+There is $\alpha\in(0,1]$ such that
+\[
+  a_{ij}(t)\geq\frac{\alpha}{N}
+  \qquad\text{for all }i,j,t.
+\]
+\end{assumption}
+
+\begin{theorem}[Directional diameter contraction]\label{thm:diameter}
+Under Assumption~\ref{ass:uniform-mixing},
+\begin{equation}\label{eq:diameter-contraction}
+    D_u(t)\leq e^{-\alpha t}D_u(0)
+    \qquad\text{for every unit }u.
+\end{equation}
+Consequently,
+$\max_{i,j}\abs{X_t^i-X_t^j}\leq
+e^{-\alpha t}\max_{i,j}\abs{X_0^i-X_0^j}$.
+\end{theorem}
+\begin{proof}
+If $\alpha=1$, the lower bound and the row sums force
+$a_{ij}=1/N$ for all $i,j$, and the differential inequalities below follow
+directly.  Suppose henceforth that $0<\alpha<1$ and write
+\[
+ a_{ij}=\frac{\alpha}{N}+(1-\alpha)\widetilde a_{ij},
+ \qquad \sum_j\widetilde a_{ij}=1.
+\]
+Then, the projected equation \eqref{eq:projected-velocity} gives
+\begin{equation}\label{eq:consensus-uniform-remainder}
+ \dot z_i
+ =\alpha(\overline z-z_i)
+ +(1-\alpha)\sum_j\widetilde a_{ij}(z_j-z_i),
+ \qquad \overline z=\frac1N\sum_j z_j.
+\end{equation}
+ Now, for each $i$ such that $z_i=M_u(t)$, every $z_j-M_u\leq0$, so
+\[
+ \dot z_i
+ =\alpha(\overline z-M_u)
+ +(1-\alpha)\sum_j\widetilde a_{ij}(z_j-M_u)
+ \leq\alpha(\overline z-M_u),
+\]
+because every summand in the remainder is nonpositive.  For each
+$i$ such that $z_i=m_u(t)$, the same calculation, with every $z_j-m_u\geq0$, gives
+$\dot z_i\geq\alpha(\overline z-m_u)$.  Taking the maximum over $I_M(t)$ and
+the minimum over $I_m(t)$ therefore gives
+\[
+ D^+M_u\leq\alpha(\overline z-M_u),
+ \qquad
+ D_+m_u\geq\alpha(\overline z-m_u).
+\]
+It follows that
+\[
+ D^+D_u\leq D^+M_u-D_+m_u
+ \leq-\alpha(M_u-m_u)=-\alpha D_u.
+\]
+Equivalently, the same differential inequality holds for $D_u'$ almost
+everywhere.  The integrating-factor form of Gronwall then gives
+\eqref{eq:diameter-contraction}.
+
+
+For the Euclidean conclusion, fix a
+diameter-realizing pair $(i,j)$ at time $t$.  If its distance is zero, the
+claim is immediate.  Otherwise choose
+\[
+ u=\frac{X_t^i-X_t^j}{\abs{X_t^i-X_t^j}}.
+\]
+By the definitions of the maximum and minimum,
+\[
+ D_u(t)=\max_k\ip{u}{X_t^k}-\min_r\ip{u}{X_t^r}
+ \geq\ip{u}{X_t^i}-\ip{u}{X_t^j}
+ =\abs{X_t^i-X_t^j}.
+\]
+Therefore
+\[
+ \abs{X_t^i-X_t^j}
+ \leq D_u(t)
+ \leq e^{-\alpha t}D_u(0)
+ \leq e^{-\alpha t}\max_{k,r}\abs{X_0^k-X_0^r},
+\]
+which proves the stated bound.
+\end{proof}
+
+
+
+\begin{exercise}[Uniform consensus]
+Solve \eqref{eq:consensus} when $a_{ij}=1/N$.  Identify the conserved quantity
+and exact decay rate.  \emph{Hint:} first derive
+$\dot X^i=\overline X-X^i$.
+\end{exercise}
+\begin{proof}[Solution]
+When $a_{ij}=1/N$,
+\[
+ \dot X_t^i=\frac1N\sum_{j=1}^N(X_t^j-X_t^i)
+ =\overline X_t-X_t^i,
+ \qquad
+ \overline X_t=\frac1N\sum_{j=1}^NX_t^j.
+\]
+Averaging this equation over $i$ gives $\dot{\overline X}_t=0$, so
+$\overline X_t=\overline X_0$.  Consequently,
+\begin{equation}\label{eq:uniform-consensus-solution}
+ X_t^i=\overline X_0+e^{-t}(X_0^i-\overline X_0).
+\end{equation}
+Every pairwise difference therefore satisfies
+$X_t^i-X_t^j=e^{-t}(X_0^i-X_0^j)$, and the exact directional and Euclidean
+diameter decay rate is $e^{-t}$.
+\end{proof}
+
+
+\paragraph{\textbf{What is conserved?}}
+Row stochasticity alone does not conserve the arithmetic mean.  Summing
+\eqref{eq:consensus} gives
+\begin{equation}\label{eq:mean-column-sum}
+ \frac{\dd}{\dd t}\overline X_t
+ =\frac1N\sum_j\left(\sum_i a_{ij}(t)-1\right)X_t^j.
+\end{equation}
+If $A(t)$ is also column stochastic, then $\overline X_t$ is constant.  If it
+is symmetric, the variance
+$\mathcal V_t=N^{-1}\sum_i\abs{X_t^i-\overline X_t}^2$ satisfies
+\begin{equation}\label{eq:variance-dissipation}
+ \frac{\dd}{\dd t}\mathcal V_t
+ =-\frac1N\sum_{i,j}a_{ij}(t)\abs{X_t^i-X_t^j}^2\leq0.
+\end{equation}
+Indeed, symmetry and row stochasticity imply column stochasticity, so
+$\overline X_t$ is constant.  Writing $Z_i=X_t^i-\overline X_t$ and suppressing
+the time variable, symmetry gives
+\begin{align*}
+  N\frac{\dd}{\dd t}\mathcal V_t
+  & = 2\sum_iZ_i\cdot\dot Z_i
+    = 2\sum_iZ_i\cdot\dot X_i
+    = 2\sum_{i,j}a_{ij}Z_i\cdot(Z_j-Z_i)  \\
+  & =\sum_{i,j}a_{ij}\left[
+ Z_i\cdot(Z_j-Z_i)+Z_j\cdot(Z_i-Z_j)\right]
+ =-\sum_{i,j}a_{ij}\abs{Z_i-Z_j}^2.
+\end{align*}
+This is a Lyapunov identity.  Standard row-softmax attention does not supply
+it, which is one motivation for symmetric or doubly-stochastic attention when
+conservation and predictable contraction are desired.
+
+
+
+\paragraph{\textbf{Why softmax can mix slowly}}
+Suppose all scores in one head lie in $[-S,S]$.  Then
+\[
+ a_{ij}\geq\frac{e^{-S}}{Ne^S}=\frac{e^{-2S}}N.
+\]
+Theorem~\ref{thm:diameter} applies with $\alpha=e^{-2S}$.  If
+$S\asymp\tau^{-1}$ is large, the guaranteed contraction time is exponentially
+large in inverse temperature.  This is not merely a weakness of the proof:
+sharp softmax can create nearly disconnected interaction graphs.
+
+At high temperature, weights are nearly uniform and the system rapidly pools
+everything into one cluster.  At low temperature, each query follows a few
+leaders; within-group relaxation can be fast while communication between
+groups is extremely slow.  The resulting multi-cluster state can be
+\emph{metastable}: stable over the depth horizon of interest even if eventual
+consensus occurs.
+
+
+
+
+\paragraph{\textbf{Consensus results for identity attention.}}
+ For Euclidean identity-softmax consensus,
+\begin{equation}\label{eq:identity-softmax-consensus}
+ \dot X_t^i=\Phi[\mu_t^N](X_t^i)-X_t^i
+ =\sum_{j=1}^Na_{ij}(X_t)(X_t^j-X_t^i),
+ \qquad
+ a_{ij}(X)=\frac{e^{\ip{X^i}{X^j}/\tau}}
+ {\sum_{k=1}^Ne^{\ip{X^i}{X^k}/\tau}}.
+\end{equation}
+Let $R_0=\max_i|X_0^i|$.  Forward invariance of the initial convex hull gives
+$|X_t^i|\leq R_0$, and hence
+\[
+ a_{ij}(X_t)
+ \geq\frac{e^{-R_0^2/\tau}}{Ne^{R_0^2/\tau}}
+ =\frac{\alpha_\tau}{N},
+ \qquad \alpha_\tau:=e^{-2R_0^2/\tau}.
+\]
+Theorem~\ref{thm:diameter} therefore applies to every initial configuration:
+\[
+ \max_{i,j}|X_t^i-X_t^j|
+ \leq e^{-\alpha_\tau t}
+ \max_{i,j}|X_0^i-X_0^j|,
+\]
+and the shrinking convex hulls converge to a single point
+$X_\infty\in\operatorname{co}\{X_0^1,\ldots,X_0^N\}$.  The rate can be
+exponentially small when $\tau$ is small, so this theorem is consistent with
+long-lived apparent clusters.  The subtraction of $X_t^i$ is essential: the
+pure residual flow $\dot X_t^i=\Phi[\mu_t^N](X_t^i)$ is not a convex-combination
+consensus system and the preceding diameter argument does not apply.
+
+
+For projected identity attention on the sphere in Section \ref{sec:spherical-attention}, the conclusion is instead almost-global: Theorem~\ref{thm:spherical-attention-clustering} gives
+single-cluster convergence for almost every finite-particle initialization,
+while exceptional antipodal or other unstable stationary configurations must
+be excluded.  Mean-field exponential convergence to a Dirac mass is also
+available under regularity and parameter assumptions
+\cite{ChenEtAl2026Quantitative,Rigollet2026MeanField}; separated configurations
+can nevertheless remain metastable for exponentially long times
+\cite{GeshkovskiEtAl2024Metastability}.
+
+
+\subsection{Clustering results for projected identity attention on the sphere}\label{sec:spherical-attention}
+The preceding consensus theorem uses only stochastic-matrix bounds.  We
+now keep the state dependence of softmax and analyze a standard idealized
+model directly.  Let $x_i(t)\in\mathbb S^{d-1}$, let $\gamma\geq0$ be the
+inverse temperature, and write
+$$\mathbf P_x^\perp=I-xx^\top$$
+for the orthogonal projection onto the tangent space
+$T_x\mathbb S^{d-1}=\{v\in\R^d:x^\top v=0\}$.  Indeed,
+$(\mathbf P_x^\perp)^\top=\mathbf P_x^\perp$,
+$(\mathbf P_x^\perp)^2=\mathbf P_x^\perp$, and
+$x^\top\mathbf P_x^\perp v=0$ for every $v\in\R^d$.  Thus
+$\mathbf P_x^\perp$ fixes every tangent vector and removes the component in
+the normal direction $x$, which characterizes the orthogonal projection.
+The normalized spherical self-attention dynamics are
+\begin{equation}\label{eq:spherical-sa}
+ \dot x_i=\mathbf P_{x_i}^\perp\sum_{j=1}^Na_{ij}(X)x_j,
+ \qquad
+ a_{ij}(X)=\frac{e^{\gamma\ip{x_i}{x_j}}}{Z_i(X)},
+ \qquad
+ Z_i(X)=\sum_{k=1}^Ne^{\gamma\ip{x_i}{x_k}}.
+\end{equation}
+The unnormalized variant is
+\begin{equation}\label{eq:spherical-usa}
+ \dot x_i=\mathbf P_{x_i}^\perp\frac1N
+ \sum_{j=1}^Ne^{\gamma\ip{x_i}{x_j}}x_j.
+\end{equation}
+In either case,
+$\frac{\dd}{\dd t}\abs{x_i}^2=2\ip{x_i}{\dot x_i}=0$, so the sphere is
+invariant.
+
+Define the average similarity energy as
+\begin{equation}\label{eq:spherical-attention-energy}
+ \mathcal J_{\gamma,N}(X)
+ =\frac1{2\gamma N^2}\sum_{i,j=1}^N
+ \left(e^{\gamma\ip{x_i}{x_j}}-1\right),
+\end{equation}
+with the continuous extension
+$\mathcal J_{0,N}(X)=(2N^2)^{-1}\sum_{i,j}\ip{x_i}{x_j}$ at
+$\gamma=0$.  For $\gamma>0$, symmetry gives
+\[
+ \nabla_{x_i}\mathcal J_{\gamma,N}(X)
+ =\frac1{N^2}\sum_{j=1}^Ne^{\gamma\ip{x_i}{x_j}}x_j,
+ \qquad
+ \nabla_{\mathbb S,x_i}\mathcal J_{\gamma,N}
+ :=\mathbf P_{x_i}^\perp\nabla_{x_i}\mathcal J_{\gamma,N}.
+\]
+Consequently, \eqref{eq:spherical-usa} is the spherical gradient ascent
+$\dot x_i=N\nabla_{\mathbb S,x_i}\mathcal J_{\gamma,N}$, while
+\eqref{eq:spherical-sa} is a diagonally rescaled ascent
+$ \dot x_i=\frac{N^2}{Z_i(X)}
+ \nabla_{\mathbb S,x_i}\mathcal J_{\gamma,N}$.
+Both identities yield an exact Lyapunov calculation:
+\begin{align}
+ \frac{\dd}{\dd t}\mathcal J_{\gamma,N}(X_t)
+ &=N\sum_i\left|\nabla_{\mathbb S,x_i}
+ \mathcal J_{\gamma,N}(X_t)\right|^2
+ &&\text{for \eqref{eq:spherical-usa}},
+ \label{eq:usa-energy-ascent}\\
+ \frac{\dd}{\dd t}\mathcal J_{\gamma,N}(X_t)
+ &=\sum_i\frac{N^2}{Z_i(X_t)}
+ \left|\nabla_{\mathbb S,x_i}
+ \mathcal J_{\gamma,N}(X_t)\right|^2
+ &&\text{for \eqref{eq:spherical-sa}}.
+ \label{eq:sa-energy-ascent}
+\end{align}
+Thus every nonstationary trajectory raises the average similarity energy.
+This is the direct state-dependent replacement for the fixed-weight diameter
+argument.
+
+\begin{theorem}[Generic global clustering for spherical attention]
+\label{thm:spherical-attention-clustering}
+Let $N\geq2$, $d\geq3$, and $\gamma\geq0$.  For either
+\eqref{eq:spherical-sa} or \eqref{eq:spherical-usa}, for almost every initial
+configuration in $(\mathbb S^{d-1})^N$ there exists
+$x_\infty\in\mathbb S^{d-1}$ such that
+\[
+ \lim_{t\to\infty}x_i(t)=x_\infty,
+ \qquad i=1,\ldots,N.
+\]
+\end{theorem}
+This result is presented, with its underlying synchronization references, in
+\cite{Rigollet2026MeanField}; see also
+\cite{GeshkovskiEtAl2023Clusters}.  Its proof has three structural steps.
+First, compactness of the sphere gives global trajectories.  Second,
+\eqref{eq:usa-energy-ascent}--\eqref{eq:sa-energy-ascent} and the
+{\L}ojasiewicz inequality for the analytic energy imply convergence of each
+trajectory to a stationary configuration, not merely convergence of its
+energy.  Third, every non-consensus stationary configuration has an unstable
+escape direction; the center-stable manifold theorem places the initial data
+converging to such saddles in a measure-zero set.  The phrase ``almost every''
+is essential because exceptional stationary configurations do exist.
+
+%% Exe or skip 
+% \begin{proof}
+% We make the three steps above precise.  Let
+% $\mathcal M=(\mathbb S^{d-1})^N$ with its product-sphere structure, and define
+% \[
+%  \varphi_\gamma(s)=
+%  \begin{cases}
+%   (e^{\gamma s}-1)/\gamma,&\gamma>0,\\
+%   s,&\gamma=0.
+%  \end{cases}
+% \]
+% Then
+% $\mathcal J_{\gamma,N}(X)=(2N^2)^{-1}\sum_{i,j}
+% \varphi_\gamma(\ip{x_i}{x_j})$ is real analytic on $\mathcal M$, and its
+% gradient for the standard product metric is
+% \[
+%  \bigl(\operatorname{grad}\mathcal J_{\gamma,N}(X)\bigr)_i
+%  =\frac1{N^2}\mathbf P_{x_i}^{\perp}
+%    \sum_{j=1}^N e^{\gamma\ip{x_i}{x_j}}x_j.
+% \]
+% Thus \eqref{eq:spherical-usa} is gradient ascent for the metric
+% \[
+%  g_X^{\mathrm{USA}}(U,V)=\frac1N\sum_{i=1}^N\ip{u_i}{v_i},
+% \]
+% whereas \eqref{eq:spherical-sa} is gradient ascent for the analytic metric
+% \[
+%  g_X^{\mathrm{SA}}(U,V)
+%  =\sum_{i=1}^N\frac{Z_i(X)}{N^2}\ip{u_i}{v_i}.
+% \]
+% Indeed, the corresponding metric gradients multiply the standard
+% product-metric gradient by $N$ and by $N^2/Z_i(X)$, respectively.  Since
+% $\mathcal M$ is compact and $Z_i>0$, both vector fields are smooth and
+% complete.  The {\L}ojasiewicz gradient inequality for analytic functions and
+% analytic Riemannian metrics therefore implies that every trajectory converges
+% to one critical point of $\mathcal J_{\gamma,N}$.
+
+% It remains to identify which critical points can attract a set of positive
+% volume.  Write the configuration as the column matrix
+% $\mathbf X=[x_1|\cdots|x_N]\in\R^{d\times N}$ and set
+% \[
+%  G=\mathbf X^\top\mathbf X,
+%  \qquad A_{ij}=e^{\gamma G_{ij}},
+%  \qquad D=\operatorname{diag}\bigl((GA)_{11},\ldots,(GA)_{NN}\bigr),
+%  \qquad S=D-A.
+% \]
+% The first-order criticality condition is
+% \begin{equation}\label{eq:spherical-critical-matrix}
+%  \mathbf X S=0.
+% \end{equation}
+% We next show that a critical point whose Riemannian Hessian is negative
+% semidefinite must be a consensus point.  Let
+% $U=[u_1|\cdots|u_N]\in T_X\mathcal M$, so that $\ip{u_i}{x_i}=0$.  Along
+% the product-sphere geodesic with initial velocity $U$, write
+% $G_{ij}(s)=\ip{x_i(s)}{x_j(s)}$.  Then
+% \[
+%  G_{ij}'(0)=\ip{u_i}{x_j}+\ip{x_i}{u_j},
+%  \qquad
+%  G_{ij}''(0)=2\ip{u_i}{u_j}
+%  -\bigl(\abs{u_i}^2+\abs{u_j}^2\bigr)G_{ij}.
+% \]
+% Consequently, direct differentiation gives
+% \begin{align}
+%  N^2\operatorname{Hess}\mathcal J_{\gamma,N}(X)[U,U]
+%  ={}&-\left\langle S,U^\top U\right\rangle_{\mathrm F}\notag\\
+%  &+\frac{\gamma}{2}\sum_{i,j=1}^N A_{ij}
+%  \bigl(\ip{u_i}{x_j}+\ip{x_i}{u_j}\bigr)^2.
+%  \label{eq:spherical-hessian-form}
+% \end{align}
+% The second line is zero when $\gamma=0$.  Negative semidefiniteness of the
+% Hessian therefore implies
+% \begin{equation}\label{eq:spherical-S-positive}
+%  \left\langle S,U^\top U\right\rangle_{\mathrm F}\geq0
+%  \qquad\text{for every }U\in T_X\mathcal M.
+% \end{equation}
+
+% To exploit \eqref{eq:spherical-S-positive}, let
+% $\zeta\sim\mathcal N(0,I_d)$ and choose the common-direction tangent
+% perturbation $u_i=(I-x_ix_i^\top)\zeta$.  Since
+% \[
+%  \E\ip{u_i}{u_j}
+%  =\operatorname{tr}\bigl((I-x_ix_i^\top)(I-x_jx_j^\top)\bigr)
+%  =d-2+G_{ij}^2,
+% \]
+% taking expectations in \eqref{eq:spherical-S-positive} yields
+% \[
+%  0\leq\left\langle
+%  S,(d-2)\one\one^\top+G^{\odot2}\right\rangle_{\mathrm F}.
+% \]
+% The identity
+% \[
+%  (d-2)\one\one^\top+G^{\odot2}
+%  =(d-3)\one\one^\top+(\one\one^\top-G)^{\odot2}+2G
+% \]
+% and \eqref{eq:spherical-critical-matrix} give
+% $\langle S,G\rangle_{\mathrm F}=0$.  Moreover,
+% \[
+%  \left\langle S,\one\one^\top\right\rangle_{\mathrm F}
+%  =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})\leq0,
+% \]
+% and, because $(\one\one^\top-G)^{\odot2}$ has zero diagonal,
+% \[
+%  \left\langle S,(\one\one^\top-G)^{\odot2}\right\rangle_{\mathrm F}
+%  =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2.
+% \]
+% Since $d\geq3$, we conclude that
+% \[
+%  0\leq(d-3)\left\langle S,\one\one^\top\right\rangle_{\mathrm F}
+%  -\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2\leq0.
+% \]
+% Every $A_{ij}$ is strictly positive, hence $G_{ij}=1$ for all $i,j$, which
+% means $x_1=\cdots=x_N$.  Thus every non-consensus critical point has a
+% strictly positive Hessian direction: it is a strict saddle for gradient
+% ascent.  This conclusion is independent of which of the two positive-definite
+% metrics above is used.  At a critical point, the Hessian quadratic form is the
+% second differential of the energy, and multiplication by a positive mobility
+% preserves the existence of an unstable direction.
+
+% Finally, the center-stable manifold theorem, in its standard avoidance form
+% for gradient flows, implies that the set of initial conditions whose limiting
+% critical point has a strictly positive Hessian direction has zero
+% product-sphere volume.  Hence, for almost every initial condition, the limit
+% established above has negative semidefinite Hessian and therefore, by the
+% landscape calculation, is a consensus point
+% $(x_\infty,\ldots,x_\infty)$.  This proves the claim.  The dynamical reduction
+% and the direct landscape calculation are given in
+% \cite[Theorem~1 and Appendix~C]{CriscitielloEtAl2026Synchronization}.
+% \end{proof}
+
+
+\begin{example}[Two tokens: the complete calculation]
+\label{ex:two-token-spherical-attention}
+Take $N=2$ in \eqref{eq:spherical-sa} and set
+$c(t)=\ip{x_1(t)}{x_2(t)}$.  Since the projected self-interaction vanishes,
+\[
+ \dot x_1=a_\gamma(c)(x_2-cx_1),\qquad
+ \dot x_2=a_\gamma(c)(x_1-cx_2),
+ \qquad
+ a_\gamma(c)=\frac1{1+e^{\gamma(1-c)}}.
+\]
+Taking the derivative of the inner product gives the closed scalar equation
+\begin{equation}\label{eq:two-token-correlation}
+ \dot c(t)= \ip{\dot x_1}{x_2} + \ip{x_1}{\dot x_2}
+ =   2a_\gamma(c(t))(1-c(t)^2).
+\end{equation}
+If $c(0)>-1$, then $c$ is increasing and its only possible limit is $1$.
+Moreover,
+$a_\gamma(c)\geq(1+e^{2\gamma})^{-1}=:a_{\min}$ and
+$1+c(t)\geq1+c(0)$, so
+\[
+ \frac{\dd}{\dd t}(1-c(t))
+ \leq-2a_{\min}(1+c(0))(1-c(t)).
+\]
+Therefore
+\begin{equation}\label{eq:two-token-exponential-clustering}
+ 1-c(t)\leq(1-c(0))
+ e^{-2a_{\min}(1+c(0))t}.
+\end{equation}
+Since $\abs{x_1-x_2}^2=2(1-c)$, the two tokens synchronize exponentially.
+The antipodal configuration $c(0)=-1$ is stationary and illustrates exactly
+the exceptional saddle excluded by Theorem~\ref{thm:spherical-attention-clustering}.
+\end{example}
+
+TBV: Three refinements explain why this elementary conclusion is not the whole
+story.  Multi-cluster states can persist for exponentially long low-temperature
+times before merging \cite{GeshkovskiEtAl2024Metastability}; causal masking
+destroys the mean-field gradient structure but can still lead to one-cluster
+convergence \cite{KaragodinEtAl2024Causal}; and, at the PDE level, quantitative
+exponential convergence to a Dirac mass is known only under stated regularity,
+nondegeneracy, and parameter regimes
+\cite{ChenEtAl2026Quantitative,Rigollet2026MeanField}.  These are results for
+idealized tied-parameter flows.  They do not by themselves establish collapse
+for a finite-depth trained Transformer with untied blocks, MLPs, residual
+channels, or multiple heads.
+
+
+
+
+
+\subsection{Useful clustering versus representation collapse}
+Clustering can pool examples that share a latent task, select a leader, denoise
+redundant patches, or create a task-relevant sufficient statistic.  Complete
+consensus, however, removes token distinctions and can reduce the rank of the
+representation.  A geometric statistic such as $\mathcal V_t$ therefore cannot
+by itself declare success or failure.  One should also track:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+ \item a task-relevant readout or sufficient statistic;
+ \item covariance spectrum or effective rank;
+ \item cluster masses and margins;
+ \item sensitivity of the terminal prediction to perturbations;
+ \item whether information survives in residual coordinates not represented by
+ the simplified consensus model.
+\end{enumerate}
+Finite-depth transient clusters may be more useful than the infinite-depth
+limit.  Conversely, a model with several stationary clusters is not thereby a
+reasoning system; the clusters must encode a verifiable computational
+quantity.
+
+
+
+\paragraph{\textbf{Literature and storyline.}}
+Consensus models make the geometry of attention visible in its simplest
+form.  DeGroot studied repeated averaging as a mechanism by which agents can
+reach a common opinion \cite{DeGroot1974}; Cucker and Smale showed how
+distance-dependent communication can generate flocking
+\cite{CuckerSmale2007}.  The same mathematical motif---state-dependent
+weighted averaging---reappears when tokens attend to one another.  Rigollet's
+research account describes a recent program, developed with collaborators,
+that treats self-attention as a velocity field of an interacting particle
+system and asks when tokens cluster \cite{RigolletResearchProfile}; an MIT
+profile records how his work moved across optimization, statistics, and
+machine learning, the combination needed for this question
+\cite{RigolletMITProfile2018}.  The new difficulty is that softmax weights are
+directed, normalized by the current cloud, and often very sensitive to
+temperature.  Classical consensus therefore supplies the baseline theorem,
+not the conclusion: contraction of the convex hull is easy, strict consensus
+requires persistent communication, and multiple clusters or metastable states
+appear when that communication degenerates.  This is exactly the distinction
+between useful representation formation and indiscriminate token collapse.
+
+\subsection{Connections forward}
+Consensus is an attractive gradient flow and hence links directly to the
+energy-dissipation viewpoint of Section~\ref{sec:gradient-flow}.  In generative modeling, excessive
+attraction resembles mode collapse, while diffusion or repulsion maintains
+diversity.  In in-context learning, clusters can represent posterior mass on
+different latent tasks, but averaging incompatible task predictions creates
+bias.  For inverse problems, metastable trajectories explore only part of state
+space and can make interaction laws outside the visited clusters
+unidentifiable.  Architecturally, head diversity, repulsive heads, gating,
+normalization, and doubly-stochastic constraints are mechanisms for positioning
+the network between uncontrolled fragmentation and one-cluster collapse.
+
+
+
+\section{Stability and propagation of perturbations}\label{sec:stability}
+\paragraph{\textbf{Key question}}
+How does an error in tokens or interaction kernels propagate through depth?
+
+\subsection{Wasserstein stability under model discrepancy}\label{sec:w1-stability}
+Let $\mu_t$ and $\nu_t$ solve continuity equations driven by fields $\Phi$ and
+$\Psi$:
+\[
+ \partial_t\mu_t+\diver(\mu_t\Phi_t[\mu_t])=0,\qquad
+ \partial_t\nu_t+\diver(\nu_t\Psi_t[\nu_t])=0.
+\]
+Differences can enter through the initial tokens, the interaction law, the
+layer parameters, numerical discretization, or finite-particle sampling.  A
+useful bound should keep these sources separate.
+
+\begin{assumption}[Lipschitz field and model discrepancy]\label{ass:stability}
+For measures supported in the domain visited up to time $T$, assume
+\begin{align}
+ \abs{\Phi_t[\mu](x)-\Phi_t[\nu](y)}
+ &\leq L_x\abs{x-y}+L_\mu W_1(\mu,\nu),
+ \label{eq:field-measure-lip}\\
+ \sup_{t,x,\eta}
+ \abs{\Phi_t[\eta](x)-\Psi_t[\eta](x)}
+ &\leq\varepsilon.
+ \label{eq:field-discrepancy}
+\end{align}
+\end{assumption}
+The supremum in \eqref{eq:field-discrepancy} can be restricted to a
+data-supported region; outside it the theorem gives no guarantee.
+
+
+\begin{theorem}[Wasserstein stability]\label{thm:w1-stability}
+Under Assumption~\ref{ass:stability}, let
+$\mu_0,\nu_0\in\cP_1(\R^d)$, and let $L=L_x+L_\mu$.  Then
+\begin{equation}\label{eq:stability}
+    W_1(\mu_t,\nu_t)
+    \leq e^{Lt}W_1(\mu_0,\nu_0)
+       +\frac{e^{Lt}-1}{L}\varepsilon,
+\end{equation}
+where $(e^{Lt}-1)/L$ is interpreted as $t$ when $L=0$.
+\end{theorem}
+The exponential factor in \eqref{eq:stability} is sharp for
+$\dot x=Lx$.  Even a small finite-time $W_1$ error can also change the selected
+long-time attractor when the initial law is near a basin boundary.  
+
+\begin{proof}
+Choose an optimal initial coupling
+$(X_0,Y_0)$.  Evolve it by
+\[
+ \dot X_t=\Phi_t[\mu_t](X_t),\qquad
+ \dot Y_t=\Psi_t[\nu_t](Y_t).
+\]
+Its law at time $t$ is a coupling of $\mu_t$ and $\nu_t$.
+Set $D_t=X_t-Y_t$.  Since $D_t$ is absolutely continuous, at times
+when $D_t\ne0$,
+$\frac{\dd}{\dd t}(|D_t|^2)^{1/2}= \langle D_t/|D_t|,\dot D_t\rangle
+\leq|\dot D_t|$; the corresponding upper-derivative inequality holds when
+$D_t=0$.  Integrating this pathwise inequality and then using Fubini gives the
+first line below.  For the second line, use the decomposition
+\[
+\Phi_t[\mu_t](X_t)-\Psi_t[\nu_t](Y_t)
+ =\bigl(\Phi_t[\mu_t](X_t)-\Phi_t[\nu_t](Y_t)\bigr)
+  +\bigl(\Phi_t[\nu_t](Y_t)-\Psi_t[\nu_t](Y_t)\bigr).
+\]
+Assumption~\ref{ass:stability} bounds the two terms by
+$L_x|D_t|+L_\mu W_1(\mu_t,\nu_t)$ and $\varepsilon$, respectively.
+\begin{align*}
+ \frac{\dd}{\dd t}\E\abs{X_t-Y_t}
+ &\leq\E\abs{\Phi_t[\mu_t](X_t)
+                 -\Psi_t[\nu_t](Y_t)}\\
+ &\leq L_x\E\abs{X_t-Y_t}
+       +L_\mu W_1(\mu_t,\nu_t)+\varepsilon\\
+ &\leq L\E\abs{X_t-Y_t}+\varepsilon.
+\end{align*}
+Gronwall's inequality gives  $\E\abs{X_t-Y_t}\leq e^{Lt}\E\abs{X_0-Y_0}+\frac{e^{Lt}-1}{L}\varepsilon
+ $. Then, we obtain \eqref{eq:stability} since
+$W_1(\mu_t,\nu_t)\leq\E\abs{X_t-Y_t}$ and $\E\abs{X_0-Y_0}=W_1(\mu_0,\nu_0)$.
+\end{proof}
+
+
+
+\begin{remark} \textbf{Replacing uniform field error by a trajectory
+$L^2$ error}
+A squared-loss learning problem does not usually control the supremum in
+\eqref{eq:field-discrepancy}. Suppose that the discrepancy is evaluated
+at the process $Y_t\sim\nu_t$.  Set
+\[
+ e_t^\eta(x):=\Phi_t[\eta](x)-\Psi_t[\eta](x),
+ \qquad
+ \varepsilon_{2,\nu}(t)
+ :=\left(\int_{\R^d}\abs{e_t^{\nu_t}(x)}^2\,\nu_t(\dd x)\right)^{1/2}.
+\] 
+In the preceding proof, Cauchy--Schwarz replaces the uniform
+estimate by
+\[
+ \E\abs{e_t^{\nu_t}(Y_t)}\leq\varepsilon_{2,\nu}(t),
+\]
+and the time-dependent Gronwall inequality gives
+\begin{equation}\label{eq:stability-occupation-L2}
+ W_1(\mu_t,\nu_t)
+ \leq e^{Lt}W_1(\mu_0,\nu_0)
+ +\int_0^t e^{L(t-s)}\varepsilon_{2,\nu}(s)\,\dd s.
+\end{equation}
+The natural space--time norm is induced by the occupation measure
+\[
+ \Lambda_{\nu,T}(\dd s,\dd x):=\nu_s(\dd x)\,\dd s,
+ \qquad
+ \norm{e}_{L^2(\Lambda_{\nu,T})}^2
+ :=\int_0^T\int_{\R^d}\abs{e_s^{\nu_s}(x)}^2
+ \nu_s(\dd x)\,\dd s.
+\]
+A second application of Cauchy--Schwarz to
+\eqref{eq:stability-occupation-L2} yields, for $t\leq T$,
+\begin{equation}\label{eq:stability-space-time-L2}
+ W_1(\mu_t,\nu_t)
+ \leq e^{Lt}W_1(\mu_0,\nu_0)
+ +\left(\frac{e^{2Lt}-1}{2L}\right)^{1/2}
+  \norm{e}_{L^2(\Lambda_{\nu,t})},
+\end{equation}
+where the factor is interpreted as $\sqrt t$ when $L=0$.  If
+$\mu_0,\nu_0\in\cP_2(\R^d)$, the same formula holds with $W_2$ in place of
+$W_1$: starting from a $W_2$-optimal coupling and setting
+$R_t=(\E\abs{X_t-Y_t}^2)^{1/2}$ gives
+$R_t'\leq LR_t+\varepsilon_{2,\nu}(t)$.
+
+Statistical learning usually supplies an $L^2$ error under a training design
+$\rho_t^{\mathrm{tr}}$, not automatically under the rollout law.  If
+$\nu_t\ll\rho_t^{\mathrm{tr}}$, then
+\[
+ \varepsilon_{2,\nu}(t)
+ \leq  \left\|\frac{\dd\nu_t}{\dd\rho_t^{\mathrm{tr}}}\right\|_{L^\infty} ^{1/2}
+ \norm{e_t^{\nu_t}}_{L^2(\rho_t^{\mathrm{tr}})}.
+\]
+This is the required state-space coverage, or distribution-shift, condition.
+If training data follow $\mu_t$ rather than $\nu_t$, one can obtain the
+analogous bound with the occupation measure of $\mu$ by splitting the fields
+at $\Psi_t[\mu_t](X_t)$ and assuming the Lipschitz estimate for $\Psi$.
+
+For uniform over a class $\mathcal A_t$ of all measures that can be visited, one may instead assume
+\[
+ \sup_{\eta\in\mathcal A_t}
+ \norm{e_t^\eta}_{L^2(\eta)}\leq\varepsilon_2(t), 
+\]
+ then proceed as above with $\varepsilon_{2,\nu}(t)\leq\varepsilon_2(t)$.
+\end{remark}
+
+\paragraph{\textbf{The finite-depth version}}
+For practical networks it is often better not to pass to continuous depth.
+For step sizes $h_\ell\geq0$, let
+\[
+ \mu^{\ell+1}
+  =(\Id+h_\ell\Phi_\ell[\mu^\ell])_\#\mu^\ell,\qquad
+ \nu^{\ell+1}
+  =(\Id+h_\ell\Psi_\ell[\nu^\ell])_\#\nu^\ell.
+\]
+Suppose \eqref{eq:field-measure-lip} holds at layer $\ell$ with
+$L_\ell=L_{x,\ell}+L_{\mu,\ell}$ and the field error bound in \eqref{eq:field-discrepancy} holds with
+$\varepsilon_\ell$.
+Precisely, the latter means
+\[
+ \sup_{x,\eta}
+ \abs{\Phi_\ell[\eta](x)-\Psi_\ell[\eta](x)}
+ \leq\varepsilon_\ell
+\]
+on the region visited by the two layer sequences. Pushing a coupling through the two maps gives (see Exercise \ref{ex:layer-stability})
+\begin{equation}\label{eq:layer-stability-recursion}
+ d_{\ell+1}\leq(1+h_\ell L_\ell)d_\ell+h_\ell\varepsilon_\ell,
+ \qquad d_\ell=W_1(\mu^\ell,\nu^\ell).
+\end{equation}
+Iteration yields the explicit error budget
+\begin{equation}\label{eq:layer-stability-product}
+\begin{split}
+ d_L\leq{}&
+ d_0\prod_{r=0}^{L-1}(1+h_rL_r) +\sum_{k=0}^{L-1}h_k\varepsilon_k
+   \prod_{r=k+1}^{L-1}(1+h_rL_r).
+\end{split}
+\end{equation}
+Thus an early-layer error is multiplied by every later amplification factor.
+Equation~\eqref{eq:layer-stability-product} remains meaningful for untied
+weights and order-one depth, where the ODE idealization may not.
+
+\begin{exercise}[Derive the discrete error budget]\label{ex:layer-stability}
+Prove \eqref{eq:layer-stability-recursion} by pushing a coupling through the two
+layer maps, and then prove \eqref{eq:layer-stability-product} by induction.
+\end{exercise}
+\begin{proof}[Solution]
+Let $\pi_\ell$ be an optimal coupling of $\mu^\ell$ and $\nu^\ell$, and let
+$(X,Y)$ have law $\pi_\ell$.  Push this coupling through the two layer maps:
+\[
+ X^+=X+h_\ell\Phi_\ell[\mu^\ell](X),\qquad
+ Y^+=Y+h_\ell\Psi_\ell[\nu^\ell](Y).
+\]
+The law of $(X^+,Y^+)$ is an admissible coupling of
+$\mu^{\ell+1}$ and $\nu^{\ell+1}$.  Splitting the field difference at
+$\Phi_\ell[\nu^\ell](Y)$ gives
+\begin{align*}
+ d_{\ell+1}
+ &\leq\E\abs{X^+-Y^+}\\
+ &\leq\E\abs{X-Y}
+ +h_\ell\E\abs{
+ \Phi_\ell[\mu^\ell](X)-\Psi_\ell[\nu^\ell](Y)}\\
+ &\leq d_\ell+h_\ell\left(
+ L_{x,\ell}d_\ell+L_{\mu,\ell}d_\ell
+ +\varepsilon_\ell\right),
+\end{align*}
+which is \eqref{eq:layer-stability-recursion}.
+
+Set $a_r=1+h_rL_r$.  We claim more generally that, for $1\leq m\leq L$,
+\[
+ d_m\leq d_0\prod_{r=0}^{m-1}a_r
+ +\sum_{k=0}^{m-1}h_k\varepsilon_k
+   \prod_{r=k+1}^{m-1}a_r,
+\]
+where an empty product equals one.  The case $m=1$ is the one-step recursion.
+If the claim holds for $m$, multiplying it by $a_m$ and adding
+$h_m\varepsilon_m$ proves it for $m+1$.  Taking $m=L$ gives
+\eqref{eq:layer-stability-product}.
+\end{proof}
+
+
+%%%%%%%%%%%
+\paragraph{\textbf{Contractivity from one-sided dissipation}}
+Global Lipschitz estimates permit exponential growth even when the true
+dynamics is contracting.  A one-sided condition captures dissipation.
+
+\begin{proposition}[Contractive regime]\label{prop:contractive}
+Suppose, for some $\kappa>L_\mu\geq0$,
+\begin{equation}\label{eq:one-sided}
+ \ip{x-y}{\Phi[\mu](x)-\Phi[\nu](y)}
+ \leq-\kappa\abs{x-y}^2
+      +L_\mu W_2(\mu,\nu)\abs{x-y}.
+\end{equation}
+Let $\mu_0,\nu_0\in\cP_2(\R^d)$.
+If $\Phi$ is replaced by a field $\Psi$ with uniform error $\varepsilon$, then
+\begin{equation}\label{eq:contractive-stability}
+ W_2(\mu_t,\nu_t)
+ \leq e^{-(\kappa-L_\mu)t}W_2(\mu_0,\nu_0)
+ +\frac{1-e^{-(\kappa-L_\mu)t}}{\kappa-L_\mu}\varepsilon.
+\end{equation}
+The same estimate holds for diffusions driven by identical additive Brownian
+noise.
+\end{proposition}
+\begin{proof}
+Choose an optimal initial coupling and evolve it synchronously according to
+\[
+ \dot X_t=\Phi[\mu_t](X_t),\qquad
+ \dot Y_t=\Psi[\nu_t](Y_t).
+\]
+Set $R(t)=(\E\abs{X_t-Y_t}^2)^{1/2}$ and $D_t=X_t-Y_t$.
+At almost every time, insert and subtract $\Phi[\nu_t](Y_t)$ to obtain
+\[
+\begin{aligned}
+ \frac12\frac{\dd}{\dd t}R(t)^2
+ &=\E\left\langle D_t,
+   \Phi[\mu_t](X_t)-\Psi[\nu_t](Y_t)\right\rangle\\
+ &=\E\left\langle D_t,
+   \Phi[\mu_t](X_t)-\Phi[\nu_t](Y_t)\right\rangle
+   +\E\left\langle D_t,
+   \Phi[\nu_t](Y_t)-\Psi[\nu_t](Y_t)\right\rangle\\
+ &\leq-\kappa R(t)^2
+   +L_\mu W_2(\mu_t,\nu_t)\E\abs{D_t}
+   +\varepsilon\E\abs{D_t}\\
+ &\leq-(\kappa-L_\mu)R(t)^2+\varepsilon R(t).
+ \end{aligned}
+\]
+The first inequality uses \eqref{eq:one-sided} for the first
+expectation and
+$|\Phi[\nu_t](Y_t)-\Psi[\nu_t](Y_t)|\leq\varepsilon$ for the second.
+The last inequality follows because the current joint law is a coupling, so
+$W_2(\mu_t,\nu_t)\leq R(t)$, and Cauchy--Schwarz gives
+$\E|D_t|\leq R(t)$.
+Dividing by $R(t)$ when it is positive gives
+\[
+ R'(t)\leq-(\kappa-L_\mu)R(t)+\varepsilon.
+\]
+The same inequality holds in the upper-Dini sense at zeros of $R$; equivalently,
+one may apply the calculation to $(R^2+\delta^2)^{1/2}$ and let
+$\delta\downarrow0$.  Solving the scalar inequality yields
+\[
+ R(t)\leq e^{-(\kappa-L_\mu)t}R(0)
+ +\frac{1-e^{-(\kappa-L_\mu)t}}{\kappa-L_\mu}\varepsilon.
+\]
+Finally $W_2(\mu_t,\nu_t)\leq R(t)$ and
+$R(0)=W_2(\mu_0,\nu_0)$, proving \eqref{eq:contractive-stability}.
+For additive diffusions driven by the same Brownian motion, the stochastic
+increments cancel in $X_t-Y_t$, so the identical calculation applies.
+\end{proof}
+In the contractive regime, model error produces a bounded error floor rather
+than exponential accumulation.  This is why monotonicity, spectral
+normalization, or a provable Lyapunov structure can be more informative than a
+small parameter norm.
+
+\subsection{Finite particles and the high-dimensional obstruction}
+For deterministic dynamics, the empirical measure of the $N$-particle system
+is itself a weak solution of the nonlinear continuity equation.  Taking
+$\nu_0=\mu_0^N$, $\Phi=\Psi$, and applying
+Theorem~\ref{thm:w1-stability} gives
+\begin{equation}\label{eq:empirical-from-initial}
+ W_1(\mu_t,\mu_t^N)\leq e^{Lt}W_1(\mu_0,\mu_0^N).
+\end{equation}
+Thus concentration or quantization at the input propagates through finite
+time.  For stochastic particles, the martingale in
+\eqref{eq:empirical-weak} adds a dynamical fluctuation term.
+
+There is no universal $N^{-1/2}$ rate for
+$W_1(\mu_0,\mu_0^N)$ in high ambient dimension.  Without additional structure,
+estimating a full $d$-dimensional distribution suffers a curse of
+dimensionality.  Better rates require intrinsic low-dimensional support,
+concentration of selected observables, a weaker metric, or special structure
+of the attention field.  This is a central warning when importing classical
+low-dimensional PDE estimates into embeddings with thousands of coordinates.
+
+
+\begin{exercise}[Sampling dimension]
+Set $\nu_0=\mu_0^N$ and $\Phi=\Psi$.  Explain how a bound on
+$\E W_1(\mu_0,\mu_0^N)$ becomes a finite-particle approximation bound.  Compare
+the cases where $\mu_0$ is supported on a curve and where it has a density on a
+high-dimensional cube.
+\end{exercise}
+\begin{proof}[Solution]
+Equation~\eqref{eq:empirical-from-initial} holds for every realization of the
+initial sample.  Taking expectations therefore gives
+\begin{equation}\label{eq:expected-particle-from-initial}
+ \E W_1(\mu_t,\mu_t^N)
+ \leq e^{Lt}\E W_1(\mu_0,\mu_0^N).
+\end{equation}
+Thus the dynamics propagates the statistical approximation error already
+present at the input; it does not create a dimension-free sampling rate.
+
+For a concrete intrinsic one-dimensional model, suppose
+$\mu_0=T_\#\lambda$, where $T:[0,1]\to\R^d$ is Lipschitz and
+$U_1,\ldots,U_N$ are i.i.d.\ with law $\lambda$.  With
+$\lambda^N=N^{-1}\sum_i\delta_{U_i}$ and
+$\mu_0^N=T_\#\lambda^N$, the contraction of Wasserstein distance under a
+Lipschitz map gives
+\[
+ W_1(\mu_0,\mu_0^N)
+ \leq\Lip(T)W_1(\lambda,\lambda^N).
+\]
+For a bounded one-dimensional law,
+$\E W_1(\lambda,\lambda^N)\leq C N^{-1/2}$, so
+\eqref{eq:expected-particle-from-initial} retains the parametric exponent.
+
+By contrast, for a distribution with a density bounded above and below on a
+$d$-dimensional cube, $d\geq3$, Theorem~1 of
+\cite{FournierGuillin2015} gives
+$\E W_1(\mu_0,\mu_0^N)\leq C N^{-1/d}$.  This exponent is unavoidable for
+such a nondegenerate density.  Indeed, if $S$ is the support of any measure on
+at most $N$ points, then
+\[
+ W_1(\mu_0,\nu)\geq\int\operatorname{dist}(x,S)\,\mu_0(\dd x).
+\]
+For a density bounded below, the volume bound
+$\abs{\{x:\operatorname{dist}(x,S)\leq r\}}\leq Nv_dr^d$ and the choice
+$r=(2Nv_d)^{-1/d}$ give a lower bound $cN^{-1/d}$.  Substitution in
+\eqref{eq:expected-particle-from-initial} therefore gives the upper bound
+$Ce^{Lt}N^{-1/d}$, with a dimension-dependent sampling exponent already
+present at time zero.  The comparison is between intrinsic dimension one and
+genuinely $d$-dimensional mass, not merely between two subsets embedded in the
+same ambient space.
+\end{proof}
+
+
+
+\subsection{Miscellaneous remarks}
+
+
+\paragraph{\textbf{From kernel error to rollout error}}
+If an interaction has the form
+\[
+ b_\phi[\mu](x)=\int K_\phi(x,y)\,\mu(\dd y),
+\]
+then on a visited domain
+\[
+ \sup_{x,\mu}\abs{b_{\widehat\phi}[\mu](x)-b_\phi[\mu](x)}
+ \leq\sup_{x,y}\abs{K_{\widehat\phi}(x,y)-K_\phi(x,y)}.
+\]
+The right side is a field-error $\varepsilon$ in
+\eqref{eq:stability}.  More refined bounds replace the supremum by a
+data-weighted norm.  This is the forward half of the inverse problem:
+estimating the interaction in a sufficiently strong norm controls finite-time
+rollout.  The converse is false in general; similar trajectories can hide
+different kernels.
+
+\paragraph{\textbf{Literature and storyline.}}
+Dobrushin's stability estimate for Vlasov equations was a foundational shift:
+instead of comparing two $N$-particle configurations coordinate by coordinate,
+one compares their laws in a transportation metric
+\cite{Dobrushin1979}.  That estimate made stability of the nonlinear limit the
+engine behind mean-field convergence.  The later development of optimal
+transport clarified why this metric is adapted to kinetic evolution.  The
+official Fields Medal profile of Villani describes a research program linking
+kinetic theory, entropy, functional inequalities, and optimal transport
+\cite{VillaniFieldsProfile2010}; these are precisely the ingredients behind
+long-time stability and relaxation.  The resulting proof strategy is the one
+used here: construct a coupling, differentiate its transportation cost, split
+state error from model error, and close the estimate by Gronwall.  It also
+gives a useful statistical principle for the rest of the notes: establish the
+forward stability modulus first, and only then insert the sampling or
+estimation rate.  A small one-step loss has scientific meaning only through
+the metric and time horizon in which the learned dynamics remain stable.
+
+
+\subsection{Connections forward}
+Generative samplers need precisely this decomposition: initial-law mismatch,
+noise mismatch,
+learned score or velocity error, and numerical integration error.  In operator
+learning, \eqref{eq:layer-stability-product} converts one-step operator error
+into rollout error.  In inverse problems, stability of the forward evolution
+must be combined with a coercivity inequality in the reverse direction.  For
+architecture design, the theorem motivates controlling the induced Jacobian
+and measure sensitivity, while Proposition~\ref{prop:contractive} explains why
+dissipative or normalized blocks can remain stable at greater depth.
+
+
+
 
 
 \begin{thebibliography}{99}
