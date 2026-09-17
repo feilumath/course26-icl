@@ -10,7 +10,7 @@
 \newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
-% \theoremstyle{definition}
+% \theoremstyle{definition} 
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{example}[theorem]{Example}
 \newtheorem{assumption}[theorem]{Assumption}
@@ -105,6 +105,15 @@ The prerequisites are It\^o's formula, basic ODE/SDE well-posedness, weak
 convergence of measures, and Gronwall's inequality.  The notes recall the
 specific facts needed from each.  Statements are intentionally finite-horizon
 unless a dissipative hypothesis gives genuine long-time control.
+
+\begin{remark}[Three levels that must not be conflated]\label{rem:three-levels}
+The identity expressing a self-attention layer through its empirical measure is
+exact.  The limit $N\to\infty$ is a probabilistic approximation requiring
+exchangeability and regularity.  The limit of many small residual layers is a
+numerical-analysis approximation requiring a small step size and controlled
+variation of the layer parameters.  Neither asymptotic limit is automatic for
+a trained language model.
+\end{remark}
 
 
 %%%%%%
@@ -283,7 +292,7 @@ Averaging over $i$ yields the semimartingale identity
 \end{align}
 For a continuous square-integrable martingale $M$ with $M_0=0$, we write
 $\langle M\rangle_t$ for its predictable quadratic variation: it is the unique increasing predictable process such that
-$M_t^2-\langle M\rangle_t$ is a martingale; see \cite[Chapter~3]{KaratzasShreve1991}. TBV. 
+$M_t^2-\langle M\rangle_t$ is a martingale; see \cite[Chapter~3]{KaratzasShreve1991}.  
 In particular,
 \[
  \E\abs{M_t}^2=\E\langle M\rangle_t.
@@ -360,7 +369,7 @@ Taking the infimum over $\pi\in\Gamma(\mu,\nu)$ proves
 \begin{theorem}[Well-posedness of the McKean--Vlasov SDE]
 \label{thm:mv-wellposed}
 Under Assumption~\ref{ass:regular-mf}, \eqref{eq:mv-sde} has a unique global
-strong solution.  For every $T<\infty$,
+strong solution and $\mu\in C([0,\infty);\cP_2(\R^d))$ with the Wasserstein-2 metric.  For every $T<\infty$,
 \begin{equation}\label{eq:mv-moment}
  \E\left[\sup_{0\leq t\leq T}\abs{\overline X_t}^2\right]
  \leq C_T\left(1+\int_{\R^d}\abs{x}^2\mu_0(\dd x)\right).
@@ -473,7 +482,7 @@ Gronwall's inequality therefore gives
 \end{equation}
 Choose $h$ so that the coefficient on the right is less than one. 
 
- Banach's fixed-point theorem gives a unique curve $\mu=\Phi(\mu)$ on $[0,h]$; the corresponding $X^\mu$ solves \eqref{eq:mv-sde}.  Repeating the argument on successive intervals of length $h$, with the terminal law from one interval as the initial law for the next, constructs the solution on every finite time interval.
+ Banach's fixed-point theorem gives a unique curve $\mu=\Phi(\mu)$ on $[0,h]$; the corresponding $X^\mu$ solves \eqref{eq:mv-sde}.  Repeating the argument on successive intervals of length $h$, with the terminal law from one interval as the initial law for the next, constructs the solution on every finite time interval. The resulting $\mu\in C([0,\infty);\cP_2(\R^d))$ is unique in the sense that any other solution must coincide with it on each interval of length $h$.  
 
 If two solutions are driven by the same $(X_0,B)$, uniqueness of the fixed
 point first gives equality of their law curves.  They then solve the same
@@ -740,7 +749,7 @@ the scalar strong law gives convergence of the second moments:
 \]
 On a separable Banach space, weak convergence together with convergence of
 these second moments is equivalent to $W_2$ convergence
-\cite[Theorem~6.9]{Villani2009}.  We need this stronger conclusion because all
+\cite[Theorem~6.9]{Villani2009}, so $W_{2,\mathsf X}(\mathsf P^N,\mathsf P)\to 0$ as $N\to\infty$.  We need this stronger conclusion because all
 evaluation maps $e_t$ are simultaneously $1$-Lipschitz for the supremum norm;
 the resulting Wasserstein contraction below controls every $t\in[0,T]$ with
 one path-space bound.  Weak convergence alone would not yield this uniform
@@ -814,6 +823,9 @@ regularity or metric entropy.
 
 When the system is deterministic, the empirical measure convergence can be proved directly without the path-space argument.  The following proposition is a
 deterministic analogue of Corollary~\ref{cor:empirical-measure-convergence} and is useful for the analysis of the mean-field limit of deterministic particle systems. 
+Note that this result is not a consequence of Theorem~\ref{thm:poc} because the initial positions are not assumed to be i.i.d., but rather an arbitrary deterministic point cloud. It is a deterministic statement about the stability of the characteristic flow, and it is also a stronger statement than Corollary~\ref{cor:empirical-measure-convergence} because it gives a uniform-in-time bound (on the Wasserstein distance between the empirical measure and the mean-field limit), whereas Corollary~\ref{cor:empirical-measure-convergence} only gives a convergence. 
+The proof is based on the stability of the characteristic flow, and it is simpler than the proof of Theorem~\ref{thm:poc} because there is no stochastic term to control.  
+
 \begin{proposition}[Deterministic empirical approximation]
 \label{prop:deterministic-empirical-convergence}
  Assume $\sigma=0$ and let $b$ satisfy Assumption~\ref{ass:regular-mf}.  Let
@@ -1084,6 +1096,7 @@ asymptotically independent.  The point is not merely to derive a PDE; it is to
 justify when a population can be replaced by one statistically representative
 nonlinear particle.
 
+
 \subsection{Remarks and connections forward}
 \begin{itemize}[leftmargin=*]
   \item We have three scales: microscopic (particles), mesoscopic (empirical measure), and macroscopic (mean-field PDE):
@@ -1152,7 +1165,7 @@ a curve in the space of probability measures.
 
 The instantaneous kinetic energy of this motion is
 \begin{equation}\label{eq:kinetic-action-density}
- \norm{v_t}_{L^2(\mu_t)}^2
+ K(t)= \norm{v_t}_{L^2(\mu_t)}^2
  :=\int_{\R^d}\abs{v_t(x)}^2\,\mu_t(\dd x),
 \end{equation}
 and its action over $[0,T]$ is the time integral of
@@ -1178,11 +1191,19 @@ the prescribed endpoints.
 See \cite{BenamouBrenier2000} and
 \cite[Chapter~7]{Villani2009}.  The static definition of $W_2$ minimizes the
 quadratic displacement over couplings of two endpoint measures.  Theorem
-\ref{thm:benamou-brenier} gives the complementary dynamic picture: the same
-quantity is the least kinetic action among all mass-preserving paths joining
-the endpoints.  In particular, $W_2$ is not merely a convenient metric for
+\ref{thm:benamou-brenier} gives the complementary dynamic picture: the same quantity is the least kinetic action among all mass-preserving paths joining the endpoints (hence it is a geodesic). 
+ In particular, $W_2$ is not merely a convenient metric for
 weak convergence; it measures the cost of motion allowed by the continuity
 equation.
+
+Furthermore, let $X_0\sim\mu_0$, $X_1\sim\mu_1$ be jointly distributed random variables with law $\pi$, and $(\mu_t,v_t)$ be the corresponding curve in the space of probability measures and velocity fields satisying the continuity equation. Then, $\dot X_t = v_t(X_t)$ and 
+\[
+ W_2^2(\mu_0,\mu_1)
+ \leq\E\abs{X_0-X_1}^2 = \E |\int_0^1 \dot X_tdt|^2  
+ = \E |\int_0^1 v_t(X_t)dt|^2
+ \leq \E \int_0^1 |v_t(X_t)|^2 dt.  
+\]
+There can be many curves and velocity fields connecting the endpoints. One curve with constant velocity $v_t \equiv X_1 - X_0$ is $X_t = (1-t)X_0 + tX_1$. The next subsection shows that when $\pi$ is the optimal coupling, this curve is the constant-speed geodesic. 
 
 
 \vspace{2mm}
@@ -1199,6 +1220,7 @@ Then, the curve $(\mu_t)_{0\leq t\leq1}$ satisfies
  W_2(\mu_s,\mu_t)=|t-s|W_2(\mu_0,\mu_1),
  \qquad 0\leq s,t\leq1.
 \]
+
 To prove it, take a \emph{jointly distributed}
 pair $(X_0,X_1)$ with law $\pi$. Thus, $X_0\sim\mu_0$ and
 $X_1\sim\mu_1$, and they are coupled optimally (rather than chosen
@@ -1245,6 +1267,203 @@ resulting path of densities is generally nonlinear.  This interpolation of
 mass, rather than linear interpolation of densities, is the basic geometry
 behind Wasserstein gradient flow.
 
+
+
+
+\vspace{3mm}
+
+\paragraph{\textbf{Kinetic action and gradient flow.}}  Gradient flow is steepest descent of an energy function in a metric space.  In Euclidean space, the steepest descent direction is the negative gradient, and the steepest descent curve is the solution of the ODE $\dot z_t=-\nabla\mathcal E(z_t)$.  The steepest descent property is equivalent to the energy dissipation identity
+\[
+ \frac{\dd}{\dd t}\mathcal E(z_t)
+ =D\mathcal E(z_t)[\dot z_t]
+ =-\norm{\nabla\mathcal E(z_t)}^2
+ =-\norm{\dot z_t}^2.
+\]  
+The energy dissipation identity is a fundamental property of gradient flows, indicating that the rate of change of the energy is equal to the negative square of the norm of the tangent vector to the flow.
+
+Note that a free energy ranks states, but it does not by itself define a gradient
+flow: the word \emph{steepest} has meaning only after a metric has specified
+the size of a tangent displacement.  On a Riemannian manifold
+$(\mathcal M,g)$, the gradient is characterized by
+\[
+ D\mathcal E(z)[\xi]
+ =\langle \operatorname{grad}\mathcal E(z),\xi\rangle_z,
+ \qquad
+ \dot z_t=-\operatorname{grad}\mathcal E(z_t).
+\]
+Our aim is to formulate the same construction for a free energy
+$\mathcal E:\cP_2(\R^d)\to(-\infty,+\infty]$, using $W_2$ to measure
+motion.
+
+\emph{The tangent metric supplied by $W_2$.}
+The space $\cP_2(\R^d)$ consists of probability measures with finite second
+moment. Rigorously, $(\cP_2(\R^d),W_2)$ is a geodesic metric space.
+Otto's calculus interprets it, at sufficiently regular measures, as a formal
+infinite-dimensional Riemannian manifold with tangent space
+\[
+ T_\mu\cP_2(\R^d)
+ :=\overline{\left\{\nabla\zeta:\zeta\in C_c^\infty(\R^d)\right\}}
+ ^{L^2(\mu;\R^d)}
+\]
+and inner product
+\[
+ \langle v,w\rangle_\mu
+ :=\int_{\R^d}v(x)\cdot w(x)\,\mu(\dd x).
+\]
+
+This tangent norm is intrinsic to $W_2$.  If $(\mu_t)$ is an absolutely
+continuous curve in $(\cP_2(\R^d),W_2)$, then for almost every $t$ there is
+a unique (exercise: verify it) minimal-norm tangent velocity $v_t$ satisfying
+\[
+ \partial_t\mu_t+\diver(\mu_t v_t)=0.
+\]
+Its norm equals the metric derivative:
+\begin{equation}\label{eq:w2-metric-speed}
+ \abs{\dot\mu_t}_{W_2}
+ :=\lim_{h\to0}\frac{W_2(\mu_{t+h},\mu_t)}{\abs h}
+ =\norm{v_t}_{L^2(\mu_t)}.
+\end{equation}
+Other velocity fields can represent the same curve, but have no smaller
+$L^2(\mu_t)$ norm.  Consequently,
+\[
+ K(t)=\int_{\R^d}\abs{v_t}^2\dd\mu_t
+ =\abs{\dot\mu_t}_{W_2}^2
+\]
+for the minimal velocity.  The time integral of $K(t)$ is therefore the
+squared-speed action of the curve, and the Benamou--Brenier formula
+\eqref{eq:benamou-brenier} says that minimizing this action over curves with
+fixed endpoints gives $W_2^2$.  This is the geometric reason that kinetic
+action, rather than an arbitrary penalty, enters Wasserstein gradient flow.
+The rigorous metric theory behind this formal manifold picture is developed
+in \cite[Chapters~8, 10--11]{AmbrosioGigliSavare2008}.
+
+\emph{Why fastest decrease is ill posed.}
+Suppose that $\mathcal E$ has a sufficiently regular first variation
+\[
+ \phi_\mu(x):=\frac{\delta\mathcal E}{\delta\mu}[\mu](x),
+ \qquad
+ \nabla\phi_\mu\in T_\mu\cP_2(\R^d).
+\]
+For a smooth curve with $\mu_0=\mu$ and initial tangent velocity $v$, the
+continuity equation and integration by parts give
+\begin{equation}\label{eq:wasserstein-directional-energy}
+ D\mathcal E(\mu)[v]
+ :=\left.\frac{\dd}{\dd t}\mathcal E(\mu_t)\right|_{t=0}
+ =\int_{\R^d}\nabla\phi_\mu(x)\cdot v(x)\,\mu(\dd x).
+\end{equation}
+Thus the formal $W_2$ gradient of $\mathcal E$ is
+$\operatorname{grad}_{W_2}\mathcal E(\mu)=\nabla\phi_\mu$.
+
+Maximizing \eqref{eq:wasserstein-directional-energy} would select ascent, not
+descent.  One might instead minimize it, or maximize its negative, but this
+problem is unbounded whenever $\nabla\phi_\mu\neq0$.  Indeed, for
+$v=-c\nabla\phi_\mu$,
+\[
+ D\mathcal E(\mu)[v]
+ =-c\int_{\R^d}\abs{\nabla\phi_\mu}^2\dd\mu
+ \longrightarrow-\infty
+ \qquad\text{as }c\to\infty.
+\]
+The energy derivative alone therefore demands an arbitrarily large velocity
+and supplies no time scale.  Constraining
+$\norm{v}_{L^2(\mu)}\leq1$ selects the normalized descent direction, but the
+unit-speed constraint imposes an arbitrary clock.
+
+\emph{The Onsager principle: decrease balanced by transport cost.}
+At a fixed state $\mu$, define the dissipation potential
+\[
+ \Psi_\mu(v):=\frac12\norm{v}_{L^2(\mu)}^2
+ =\frac12\int_{\R^d}\abs v^2\dd\mu
+\]
+and the \emph{Onsager functional}, also called the \emph{Rayleighian}, by
+\begin{align}
+ \mathcal R_\mu(v)
+ &:=\underbrace{\Psi_\mu(v)}_{\text{potential dissipation}}
+   +\underbrace{D\mathcal E(\mu)[v]}
+      _{\text{directional energy change}} \notag\\
+ &=\frac12\int_{\R^d}\abs{v+\nabla\phi_\mu}^2\dd\mu
+   -\frac12\int_{\R^d}\abs{\nabla\phi_\mu}^2\dd\mu.
+ \label{eq:onsager-functional}
+\end{align}
+Thus the potential dissipation term is one half of the instantaneous kinetic-action density.  By
+\eqref{eq:w2-metric-speed}, it is precisely one half of the squared
+$W_2$ speed.  The minimizer 
+\[
+ v_\mu
+ =\argmin_{v\in T_\mu\cP_2(\R^d)}\mathcal R_\mu(v)
+\]
+is therefore the penalized version of fastest descent, and \eqref{eq:onsager-functional} gives
+\[
+ v_\mu=-\nabla\phi_\mu
+ =-\nabla\frac{\delta\mathcal E}{\delta\mu}[\mu].
+\]
+The quadratic penalty selects both the direction and its magnitude.  The
+coefficient $1/2$ corresponds to unit mobility; changing it rescales the
+velocity, and hence the time variable.
+
+\emph{The Wasserstein gradient-flow equation.}
+Substituting the minimizing velocity into the continuity equation gives
+\begin{equation}\label{eq:kinetic-role-gradient-flow}
+ \partial_t\mu_t
+ =\diver\left(
+   \mu_t\nabla\frac{\delta\mathcal E}{\delta\mu}[\mu_t]\right).
+\end{equation}
+Along a smooth solution,
+\begin{equation}\label{eq:wasserstein-energy-dissipation}
+ \frac{\dd}{\dd t}\mathcal E(\mu_t)
+ =-\int_{\R^d}
+   \left|\nabla\frac{\delta\mathcal E}{\delta\mu}[\mu_t]\right|^2
+   \dd\mu_t
+ =-\norm{v_t}_{L^2(\mu_t)}^2
+ =-\abs{\dot\mu_t}_{W_2}^2\leq0.
+\end{equation}
+The energy supplies the force $-\nabla\phi_{\mu_t}$, while the $W_2$ tangent
+metric converts this force into a velocity. 
+
+\emph{What is guaranteed to decrease?}
+Equation~\eqref{eq:wasserstein-energy-dissipation} shows that the free energy
+$\mathcal E(\mu_t)$ decreases.  The kinetic quantity
+$K(t)=\abs{\dot\mu_t}_{W_2}^2$ need not.  Already for the Euclidean gradient
+flow $\dot x_t=-E'(x_t)$,
+\[
+ \frac12K'(t)=-E''(x_t)K(t).
+\]
+For example, if $E(x)=1-\cos x$ and $x_t\in(\pi/2,\pi)$, then
+$\frac{\dd}{\dd t}E(x_t)=-\sin^2x_t<0$ but
+$K'(t)=-2\sin^2x_t\cos x_t>0$.  Formally, the Wasserstein analogue is
+\[
+ \frac12K'(t)
+ =-\operatorname{Hess}_{W_2}\mathcal E(\mu_t)[v_t,v_t].
+\]
+Thus displacement convexity makes $K(t)$ nonincreasing, but gradient-flow
+structure alone does not.  By contrast, the minimal kinetic quantity along
+a constant-speed $W_2$ geodesic is constant by definition.
+
+\emph{Connections forward.}
+This abstract construction is the template for the examples below.  For the
+interaction energy \eqref{eq:interaction-energy}, it identifies a symmetric
+potential IPS as both a finite-dimensional gradient descent and the
+continuum $W_2$ gradient flow \eqref{eq:wasserstein-interaction-gf}.  Adding
+Boltzmann entropy gives the diffusive free energy \eqref{eq:free-energy} and
+the McKean--Vlasov/Fokker--Planck equation
+\eqref{eq:free-energy-gradient-flow}.  The JKO scheme
+\eqref{eq:jko-scheme} is the finite-step version: it replaces the
+infinitesimal squared-speed penalty by $W_2^2/(2h)$.
+
+Later, Section~\ref{sec:continuous-depth} applies the same test to attention.
+An attention field always defines a continuity equation in the
+continuous-depth limit, but it is a standard $W_2$ gradient flow only when
+the field has the variational form
+\[
+ \Phi[\mu](x)
+ =-\nabla_x\frac{\delta\mathcal E}{\delta\mu}[\mu](x)
+\]
+for a single energy $\mathcal E$; generic row-normalized attention need not
+have this structure.
+
+
+
+%%% 
 \subsection{Potential interactions: one gradient flow at two scales}
 
 We now identify the additional structure that turns a general IPS into
@@ -3645,6 +3864,540 @@ dissipative or normalized blocks can remain stable at greater depth.
 
 
 
+\newpage
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%% 
+
+\appendix
+\section{ODE and SDE preliminaries}
+\label{sec:ode-sde-preliminaries}
+This appendix collects the deterministic and stochastic tools used repeatedly
+in the notes.  Its purpose is also to distinguish three logically different
+steps: a pathwise integral inequality, a maximal estimate for a martingale,
+and a deterministic Gronwall argument after taking expectations.  Unless
+stated otherwise, all processes are defined on a filtered probability space
+$(\Omega,\mathcal F,(\mathcal F_t)_{t\geq0},\Prob)$ satisfying the usual
+conditions.
+
+We first record the elementary bridge between the pushforwards notation  and
+random variables.
+
+\begin{lemma}[Pushforwards, composition, and laws]
+\label{lem:pushforward-random-variable}
+Let $E,F,G$ be Polish spaces, let $\mu\in\cP(E)$, and let
+$S:E\to F$ and $R:F\to G$ be Borel maps.  Then
+\begin{align}
+ \int_F h(y)\,(S_\#\mu)(\dd y)
+ &=\int_E h(S(x))\,\mu(\dd x),
+ \label{eq:pushforward-integration}\\
+ R_\#(S_\#\mu)&=(R\circ S)_\#\mu.
+ \label{eq:pushforward-composition}
+\end{align}
+The first identity holds for every bounded Borel $h$, and more generally
+whenever either side is well defined.  If $X$ is an $E$-valued random
+variable with $\Law(X)=\mu$, then
+\begin{equation}\label{eq:law-of-map}
+ \Law(S(X))=S_\#\mu.
+\end{equation}
+In particular, if $T:E\to F$ is Borel, then
+$(\Id,T)_\#\mu$ is the joint law of $(X,T(X))$; its marginals are
+$\mu$ and $T_\#\mu$.
+\end{lemma}
+\begin{proof}
+By definition,
+$(S_\#\mu)(B)=\mu(S^{-1}(B))$ for every Borel set $B\subset F$.
+This proves \eqref{eq:pushforward-integration} first for indicator functions,
+then for nonnegative and integrable Borel functions by the usual simple-function
+approximation.  For a Borel set $C\subset G$,
+\[
+ [R_\#(S_\#\mu)](C)
+ =(S_\#\mu)(R^{-1}(C))
+ =\mu\bigl((R\circ S)^{-1}(C)\bigr),
+\]
+which proves \eqref{eq:pushforward-composition}.  Finally,
+\[
+ \Prob(S(X)\in B)=\Prob(X\in S^{-1}(B))
+ =\mu(S^{-1}(B))=(S_\#\mu)(B),
+\]
+so \eqref{eq:law-of-map} follows.  Applying it to the map
+$x\mapsto(x,T(x))$ gives the last assertion.
+\end{proof}
+
+The following lemma is used in Section~\ref{sec:ips} to justify the convergence of empirical measures
+in Wasserstein distance, where $E=\R^d$, $p=2$, and $Y_i=\overline X_t^i$.
+
+\begin{lemma}[Strong law for empirical measures in Wasserstein distance]
+\label{lem:empirical-wasserstein-slln}
+Let $(E,d)$ be a Polish space (i.e., a complete separable metric space), let $p\geq1$, and let $Y_1,Y_2,\ldots$ be i.i.d.\ random variables with law $\mu$.  Assume that,
+for some $y_0\in E$,
+$\int_E d(y,y_0)^p\,\mu(\dd y)<\infty$.  For
+\[
+ \mu^N=\frac1N\sum_{i=1}^N\delta_{Y_i},
+\]
+one has
+\begin{equation}\label{eq:empirical-wasserstein-slln}
+ W_p(\mu^N,\mu)\longrightarrow0
+ \qquad\text{almost surely}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Fix $y_0\in E$.  Since $E$ is Polish, there is a countable
+convergence-determining family
+$\{f_m\}_{m\geq1}\subset C_b(E)$, i.e., if $\int f_m d\mu^N \to \int f_m d\mu$ for all $m$, then $\mu^N \Rightarrow \mu$.  For each $m$, the scalar strong law of large numbers gives
+\[
+ \int_E f_m\,\dd\mu^N
+ =\frac1N\sum_{i=1}^N f_m(Y_i)
+ \longrightarrow \E f_m(Y_1)
+ =\int_E f_m\,\dd\mu
+ \qquad\text{almost surely}.
+\]
+For each $m$, let $A_m$ be the event that $\int_E f_m\,\dd\mu^N \to \int_E f_m\,\dd\mu$, then $\Prob(A_m) = 1$ for each $m$. Intersecting these probability-one events over $m$, we get a probability-one event $A:=\bigcap_{m=1}^\infty A_m$, and on the event $A$, we have that $\int_E f_m\,\dd\mu^N \to \int_E f_m\,\dd\mu$ for all $m$. This implies that $\mu^N \Rightarrow \mu$ almost surely.
+
+The moment assumption also permits the
+strong law of large numbers for the integrable random variable $d(Y_i,y_0)^p$:
+\[
+ \int_E d(y,y_0)^p\,\mu^N(\dd y)
+ =\frac1N\sum_{i=1}^N d(Y_i,y_0)^p
+ \longrightarrow
+ \int_E d(y,y_0)^p\,\mu(\dd y)
+ \qquad\text{almost surely}.
+\]
+Weak convergence together with convergence of these $p$th moments is
+equivalent to $W_p$ convergence by
+\cite[Theorem~6.9]{Villani2009}, proving
+\eqref{eq:empirical-wasserstein-slln}.  
+\end{proof}
+
+
+\subsection{Fixed points and deterministic Gronwall inequalities}
+
+The fixed-point construction in Section~\ref{sec:ips} uses the following theorem.
+
+\begin{theorem}[Banach contraction principle]
+\label{thm:appendix-banach}
+Let $(E,d)$ be a complete metric space and let $\Phi:E\to E$ satisfy
+\[
+ d(\Phi(x),\Phi(y))\leq qd(x,y),
+ \qquad x,y\in E,\qquad 0\leq q<1.
+\]
+Then $\Phi$ has a unique fixed point $x_\ast$.  For every $x_0\in E$, the
+iterates $x_{n+1}=\Phi(x_n)$ satisfy
+\begin{equation}\label{eq:appendix-banach-rate}
+ d(x_n,x_\ast)\leq\frac{q^n}{1-q}d(x_1,x_0).
+\end{equation}
+\end{theorem}
+The proof sums the geometric bound
+$d(x_{n+1},x_n)\leq q^nd(x_1,x_0)$ to show that $(x_n)$ is Cauchy, and then
+uses continuity of $\Phi$ and completeness of $E$.  See
+\cite[Theorem~2.1]{Teschl2012}.
+
+The next form of Gronwall's inequality contains all continuous-time versions
+used in these notes.
+
+\begin{lemma}[Generalized integral Gronwall inequality]
+\label{lem:appendix-gronwall}
+Let $u,\alpha:[0,T]\to[0,\infty)$ be continuous and let
+$\beta\in L^1(0,T)$ be nonnegative.  If
+\begin{equation}\label{eq:appendix-gronwall-assumption}
+ u(t)\leq\alpha(t)+\int_0^t\beta(s)u(s)\dd s,
+ \qquad 0\leq t\leq T,
+\end{equation}
+then
+\begin{equation}\label{eq:appendix-gronwall-general}
+ u(t)\leq\alpha(t)+\int_0^t\alpha(s)\beta(s)
+ \exp\left(\int_s^t\beta(r)\dd r\right)\dd s.
+\end{equation}
+If $\alpha$ is nondecreasing, this simplifies to
+\begin{equation}\label{eq:appendix-gronwall-monotone}
+ u(t)\leq\alpha(t)
+ \exp\left(\int_0^t\beta(s)\dd s\right).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Set
+$v(t)=\int_0^t\beta(s)u(s)\dd s$ and
+$B(t)=\int_0^t\beta(s)\dd s$.  Then $v$ is absolutely continuous and
+\[
+ v'(t)=\beta(t)u(t)
+ \leq\beta(t)\alpha(t)+\beta(t)v(t)
+ \qquad\text{for almost every }t.
+\]
+Multiplying by $e^{-B(t)}$ and integrating gives
+\[
+ v(t)\leq\int_0^t\alpha(s)\beta(s)e^{B(t)-B(s)}\dd s.
+\]
+Combining this with $u\leq\alpha+v$ proves
+\eqref{eq:appendix-gronwall-general}.  If $\alpha$ is nondecreasing, replace
+$\alpha(s)$ in the integral by $\alpha(t)$ and use
+\[
+ 1+\int_0^t\beta(s)e^{B(t)-B(s)}\dd s=e^{B(t)}.
+\]
+\end{proof}
+
+In particular, if
+\begin{equation}\label{eq:appendix-course-gronwall}
+ u(t)\leq a+c\int_0^tu(s)\dd s,
+\end{equation}
+then $u(t)\leq ae^{ct}$.  Thus an error $a=C/N$ remains of order $N^{-1}$
+on every fixed time interval, although its constant can grow exponentially in
+the horizon.  This is the version used in the propagation-of-chaos proof.  A
+precise reference for the generalized form is
+\cite[Lemma~2.7]{Teschl2012}.
+
+For dissipative estimates, the integrating-factor form is often more useful.
+If $u$ is absolutely continuous and
+\[
+ u'(t)\leq-\lambda u(t)+f(t)
+ \quad\text{a.e.},\qquad \lambda>0,\quad f\geq0,
+\]
+then
+\begin{equation}\label{eq:appendix-dissipative-gronwall}
+ u(t)\leq e^{-\lambda t}u(0)
+ +\int_0^te^{-\lambda(t-s)}f(s)\dd s.
+\end{equation}
+In particular, $f=0$ yields the exponential diameter and variance decay used
+in Section~\ref{sec:clustering}.
+
+\begin{lemma}[Discrete Gronwall inequality]
+\label{lem:appendix-discrete-gronwall}
+Let $h>0$, $L\geq0$, and suppose that nonnegative sequences $(e_n)$ and
+$(r_n)$ satisfy
+\[
+ e_{n+1}\leq(1+hL)e_n+hr_n,
+ \qquad n=0,\ldots,M-1.
+\]
+Then
+\begin{align}
+ e_n
+ &\leq(1+hL)^ne_0
+ +h\sum_{j=0}^{n-1}(1+hL)^{n-1-j}r_j\notag\\
+ &\leq e^{Lt_n}\left(e_0+h\sum_{j=0}^{n-1}r_j\right),
+ \qquad t_n=nh.\label{eq:appendix-discrete-gronwall}
+\end{align}
+Consequently, if $e_0=0$ and the local defect is $Ch^2$, so that
+$r_n=Ch$, then $\max_{t_n\leq T}e_n\leq C_T h$.
+\end{lemma}
+\begin{proof}
+Iterate the one-step recursion to obtain the first line of
+\eqref{eq:appendix-discrete-gronwall}; the second follows from
+$(1+hL)^k\leq e^{Lkh}$.  This is the estimate behind the continuous-depth
+Euler bound in Section~\ref{sec:continuous-depth}; see also
+\cite[Section~2.7]{Teschl2012}.
+\end{proof}
+
+\subsection{ODE well-posedness, stability, and characteristics}
+
+\begin{theorem}[Global Picard--Lindel\"of theorem]
+\label{thm:appendix-ode-wp}
+Let $F:[0,T]\times\R^m\to\R^m$ be continuous and globally Lipschitz in its
+second variable, uniformly in time:
+\[
+ \abs{F(t,x)-F(t,y)}\leq L\abs{x-y}.
+\]
+For every $x_0\in\R^m$, the initial-value problem
+\begin{equation}\label{eq:appendix-ode}
+ \dot x_t=F(t,x_t),\qquad x_{t=0}=x_0,
+\end{equation}
+has a unique solution on $[0,T]$.  If
+$K=\sup_{0\leq t\leq T}\abs{F(t,0)}$, then
+\begin{equation}\label{eq:appendix-ode-growth}
+ \abs{x_t}\leq e^{Lt}\abs{x_0}
+ +K\int_0^te^{L(t-s)}\dd s.
+\end{equation}
+Moreover, if $y$ solves $\dot y_t=G(t,y_t)$ and
+\[
+ \abs{F(t,z)-G(t,z)}\leq\varepsilon(t),
+ \qquad z\in\R^m,\quad \varepsilon\in L^1(0,T),
+\]
+then
+\begin{equation}\label{eq:appendix-ode-stability}
+ \abs{x_t-y_t}
+ \leq e^{Lt}\abs{x_0-y_0}
+ +\int_0^te^{L(t-s)}\varepsilon(s)\dd s.
+\end{equation}
+\end{theorem}
+\begin{proof}
+Local existence and uniqueness follow by applying
+Theorem~\ref{thm:appendix-banach} to the integral map
+\[
+ \Phi(x)(t)=x_0+\int_0^tF(s,x(s))\dd s
+\]
+on a sufficiently short time interval.  The linear-growth estimate
+$\abs{F(t,x)}\leq K+L\abs{x}$ and
+Lemma~\ref{lem:appendix-gronwall} prevent finite-time blowup, so the solution
+extends to $[0,T]$.  Applying the same lemma to the integral equations for
+$x$ and $y$ gives \eqref{eq:appendix-ode-growth} and
+\eqref{eq:appendix-ode-stability}.  See
+\cite[Theorem~2.2 and Corollary~2.6]{Teschl2012} for the local and global
+statements.
+\end{proof}
+
+The empirical-measure identities in
+Sections~\ref{sec:self-attention}--\ref{sec:clustering} are ordinary chain rules
+applied simultaneously to all characteristics.
+
+\begin{proposition}[Characteristics and the continuity equation]
+\label{prop:appendix-characteristics}
+Let $v:[0,T]\times\R^m\to\R^m$ be continuous, globally Lipschitz in space,
+and of linear growth.  Let $F_t(x)$ solve
+$\dot F_t(x)=v(t,F_t(x))$, $F_0(x)=x$, and set
+$\mu_t=(F_t)_\#\mu_0$ for $\mu_0\in\cP_1(\R^m)$.  Then, for every
+$\varphi\in C_c^1(\R^m)$,
+\begin{equation}\label{eq:appendix-continuity-weak}
+ \int\varphi\,\dd\mu_t-\int\varphi\,\dd\mu_0
+ =\int_0^t\int\nabla\varphi(x)\cdot v(s,x)\,\mu_s(\dd x)\dd s.
+\end{equation}
+Thus $\mu_t$ is a weak solution of
+$\partial_t\mu+\diver(\mu v)=0$.
+\end{proposition}
+\begin{proof}
+Use the definition of pushforward and the ordinary chain rule:
+\[
+ \varphi(F_t(x))-\varphi(x)
+ =\int_0^t\nabla\varphi(F_s(x))\cdot v(s,F_s(x))\dd s.
+\]
+Integrate with respect to $\mu_0$ and change variables by
+$\mu_s=(F_s)_\#\mu_0$.
+\end{proof}
+
+The consensus proof also uses a standard fact about nonsmooth extrema.  If
+$z_1,\ldots,z_N$ are differentiable, define
+$M(t)=\max_i z_i(t)$ and $m(t)=\min_i z_i(t)$.  Their upper and lower right
+Dini derivatives satisfy
+\[
+ D^+M(t):=\limsup_{h\downarrow0}\frac{M(t+h)-M(t)}h,
+ \qquad
+ D_+m(t):=\liminf_{h\downarrow0}\frac{m(t+h)-m(t)}h.
+\]
+\begin{equation}\label{eq:appendix-dini-maximum}
+ D^+M(t)=\max_{i:z_i(t)=M(t)}\dot z_i(t),
+ \qquad
+ D_+m(t)=\min_{i:z_i(t)=m(t)}\dot z_i(t).
+\end{equation}
+This follows by separating the active indices from the finitely many indices
+with a strict gap at time $t$.  It permits a differential inequality for a
+diameter even when an extremizing particle changes or several particles tie.
+
+\subsection{Stochastic integrals, brackets, and maximal inequalities}
+
+Let $B$ be a standard Brownian motion in $\R^q$.  A predictable process
+$H:[0,T]\times\Omega\to\R^q$ is square integrable if
+$\E\int_0^T\abs{H_s}^2\dd s<\infty$.
+
+\begin{theorem}[It\^o isometry and bracket]
+\label{thm:appendix-ito-isometry}
+For every square-integrable predictable $H$, the process
+\[
+ M_t=\int_0^tH_s\cdot\dd B_s
+\]
+is a continuous square-integrable martingale with $M_0=0$ and
+\begin{equation}\label{eq:appendix-ito-isometry}
+ \E M_t=0,\qquad
+ \E\abs{M_t}^2=\E\int_0^t\abs{H_s}^2\dd s,\qquad
+ \langle M\rangle_t=\int_0^t\abs{H_s}^2\dd s.
+\end{equation}
+If $M^i=\int H_s^i\cdot\dd B_s^i$ are driven by independent Brownian
+motions, then $\langle M^i,M^j\rangle=0$ for $i\ne j$, and the bracket of a
+finite sum is the sum of the individual brackets.
+\end{theorem}
+See \cite[Chapter~3, Section~2]{KaratzasShreve1991} for the construction of
+the stochastic integral, its isometry, and quadratic variation.
+
+\begin{theorem}[Doob's maximal inequality]
+\label{thm:appendix-doob}
+Let $M$ be a martingale with right-continuous paths and let $p>1$.  If
+$M_T\in L^p$, then
+\begin{equation}\label{eq:appendix-doob}
+ \E\left[\sup_{0\leq t\leq T}\abs{M_t}^p\right]
+ \leq\left(\frac{p}{p-1}\right)^p\E\abs{M_T}^p.
+\end{equation}
+For $p=2$, the constant is $4$.  Since $\abs{B_t}$ is a nonnegative
+submartingale and $\E\abs{B_T}^2=qT$,
+\begin{equation}\label{eq:appendix-brownian-max}
+ \E\sup_{0\leq t\leq T}\abs{B_t}^2\leq4qT.
+\end{equation}
+\end{theorem}
+The submartingale and continuous-time versions are given in
+\cite[Chapter~II, Section~1]{RevuzYor1999}; see also
+\cite[Chapter~1, Section~3]{KaratzasShreve1991}.
+
+\begin{theorem}[Burkholder--Davis--Gundy inequality]
+\label{thm:appendix-bdg}
+Let $M$ be a real-valued continuous local martingale with $M_0=0$.  For every
+$p>0$, there are constants $0<c_p\leq C_p<\infty$, depending only on $p$,
+such that for every stopping time $\tau$,
+\begin{equation}\label{eq:appendix-bdg}
+ c_p\E\langle M\rangle_\tau^{p/2}
+ \leq\E\left[\sup_{0\leq t\leq\tau}\abs{M_t}^p\right]
+ \leq C_p\E\langle M\rangle_\tau^{p/2}.
+\end{equation}
+The quantities may be infinite.  In particular, for
+$M_t=\int_0^tH_s\cdot\dd B_s$, the right side is controlled by
+$\E(\int_0^\tau\abs{H_s}^2\dd s)^{p/2}$.
+\end{theorem}
+A precise reference is \cite[Chapter~IV, Theorem~4.1]{RevuzYor1999}.
+
+Doob and BDG answer related but different questions.  Doob controls the
+running maximum by an integrable terminal value.  BDG identifies the natural
+scale of a continuous martingale directly through its bracket.  At $p=2$,
+Doob's inequality and the It\^o isometry give the useful upper bound
+\begin{equation}\label{eq:appendix-doob-isometry}
+ \E\sup_{0\leq t\leq T}\abs{M_t}^2
+ \leq4\E\langle M\rangle_T.
+\end{equation}
+
+For martingale terms produced by It\^o's formula, BDG is commonly combined
+with Young's inequality.  For example, if
+$M_t=\int_0^tY_sH_s\cdot\dd B_s$, then
+\begin{align}
+ \E\sup_{0\leq r\leq t}\abs{M_r}
+ &\leq C_1\E\left[
+ \sup_{0\leq r\leq t}\abs{Y_r}
+ \left(\int_0^t\abs{H_s}^2\dd s\right)^{1/2}\right]\notag\\
+ &\leq\varepsilon\E\sup_{0\leq r\leq t}\abs{Y_r}^2
+ +\frac{C_1^2}{4\varepsilon}
+ \E\int_0^t\abs{H_s}^2\dd s,
+ \qquad\varepsilon>0.\label{eq:appendix-bdg-young}
+\end{align}
+The first term can then be absorbed into the left side of a moment estimate.
+
+\subsection{It\^o's formula and globally Lipschitz SDEs}
+
+\begin{theorem}[Multidimensional It\^o formula]
+\label{thm:appendix-ito-formula}
+Let $X_t\in\R^m$ satisfy
+\begin{equation}\label{eq:appendix-sde-general}
+ \dd X_t=b_t\dd t+\Sigma_t\dd B_t,
+\end{equation}
+where $b_t\in\R^m$, $\Sigma_t\in\R^{m\times q}$, and the usual local
+integrability assumptions hold.  For $f\in C^{1,2}([0,T]\times\R^m)$,
+\begin{align}
+ \dd f(t,X_t)
+ &=\left[\partial_tf(t,X_t)+b_t\cdot\nabla f(t,X_t)
+ +\frac12\operatorname{tr}\left(
+ \Sigma_t\Sigma_t^\top D^2f(t,X_t)\right)\right]\dd t\notag\\
+ &\quad+\nabla f(t,X_t)^\top\Sigma_t\dd B_t.
+ \label{eq:appendix-ito-formula}
+\end{align}
+\end{theorem}
+See \cite[Chapter~3, Section~3]{KaratzasShreve1991}.  Taking expectations in
+\eqref{eq:appendix-ito-formula} removes the stochastic integral when it is a
+true martingale.  This is the step that converts an SDE into its weak
+Fokker--Planck equation.  For constant
+$\Sigma=\sigma I_m$, the second-order term is
+$(\sigma^2/2)\Delta f$.
+
+\begin{theorem}[Strong well-posedness and a second-moment estimate]
+\label{thm:appendix-sde-wp}
+Let
+$b:[0,T]\times\R^m\to\R^m$ and
+$\Sigma:[0,T]\times\R^m\to\R^{m\times q}$ be measurable and suppose that,
+for some $L,K<\infty$,
+\begin{align}
+ \abs{b(t,x)-b(t,y)}
+ +\norm{\Sigma(t,x)-\Sigma(t,y)}_{\mathrm F}
+ &\leq L\abs{x-y},\label{eq:appendix-sde-lipschitz}\\
+ \abs{b(t,0)}^2+\norm{\Sigma(t,0)}_{\mathrm F}^2
+ &\leq K.\label{eq:appendix-sde-origin}
+\end{align}
+If $X_0$ is $\mathcal F_0$-measurable with $\E\abs{X_0}^2<\infty$ and is
+independent of $B$, then
+\begin{equation}\label{eq:appendix-lipschitz-sde}
+ \dd X_t=b(t,X_t)\dd t+\Sigma(t,X_t)\dd B_t,
+ \qquad X_{t=0}=X_0,
+\end{equation}
+has a unique global strong solution.  Moreover,
+\begin{equation}\label{eq:appendix-sde-moment}
+ \E\sup_{0\leq t\leq T}\abs{X_t}^2
+ \leq C_{T,L,K,m,q}\left(1+\E\abs{X_0}^2\right).
+\end{equation}
+\end{theorem}
+\begin{proof}
+Existence and pathwise uniqueness follow by Picard iteration in the space of
+adapted continuous processes; see
+\cite[Chapter~5, Section~2]{KaratzasShreve1991}.  We record the moment argument
+because it is used repeatedly.  Conditions
+\eqref{eq:appendix-sde-lipschitz}--\eqref{eq:appendix-sde-origin} imply
+\[
+ \abs{b(t,x)}^2+\norm{\Sigma(t,x)}_{\mathrm F}^2
+ \leq C(1+\abs{x}^2).
+\]
+Writing \eqref{eq:appendix-lipschitz-sde} in integral form, using
+$\abs{x+y+z}^2\leq3(\abs{x}^2+\abs{y}^2+\abs{z}^2)$, and applying
+Cauchy--Schwarz in time gives, for
+$Q(t)=\E\sup_{0\leq r\leq t}\abs{X_r}^2$,
+\begin{align*}
+ Q(t)
+ &\leq3\E\abs{X_0}^2
+ +3t\int_0^t\E\abs{b(s,X_s)}^2\dd s\\
+ &\quad+3\E\sup_{0\leq r\leq t}
+ \left\lvert\int_0^r\Sigma(s,X_s)\dd B_s\right\rvert^2.
+\end{align*}
+Apply Doob's $L^2$ inequality componentwise, or its Hilbert-space version,
+and then the It\^o isometry:
+\[
+ \E\sup_{0\leq r\leq t}
+ \left\lvert\int_0^r\Sigma(s,X_s)\dd B_s\right\rvert^2
+ \leq4\E\int_0^t\norm{\Sigma(s,X_s)}_{\mathrm F}^2\dd s.
+\]
+The linear-growth bound therefore yields
+\[
+ Q(t)\leq C_T\left(1+\E\abs{X_0}^2\right)
+ +C_T\int_0^tQ(s)\dd s.
+\]
+Lemma~\ref{lem:appendix-gronwall} proves
+\eqref{eq:appendix-sde-moment}.
+\end{proof}
+
+If two solutions use the same Brownian motion and have the same
+state-independent diffusion matrix, their noise terms cancel upon
+subtraction.  Their difference then satisfies an ordinary random integral
+equation, as in the synchronous coupling of Section~\ref{sec:ips}.  For state-dependent
+diffusion, a stochastic integral remains; Doob or BDG must be applied before
+Gronwall.
+
+\subsection{The estimate pipeline used in the notes}
+The recurring argument can be summarized as follows.
+\begin{enumerate}[leftmargin=*]
+ \item Write the ODE or SDE in integral form and isolate the difference or
+ moment to be estimated.
+ \item Take a time supremum.  Use Cauchy--Schwarz for drift integrals and
+ Doob or BDG for stochastic integrals.
+ \item Take expectations and use linear growth, Lipschitz continuity,
+ independence, or a coupling estimate to close the right side.
+ \item Apply the deterministic integral Gronwall inequality to the resulting
+ scalar function of time.
+\end{enumerate}
+Thus the arguments in these notes do not invoke a separate stochastic
+Gronwall theorem: the stochastic term is controlled first, and the final
+Gronwall step is deterministic.  For reference, the ODE results above are
+collected in \cite[Chapter~2]{Teschl2012}; stochastic integration and It\^o's
+formula are in \cite[Chapter~3]{KaratzasShreve1991}; strong SDE
+well-posedness is in \cite[Chapter~5, Section~2]{KaratzasShreve1991}; and the
+Doob and BDG inequalities are in
+\cite[Chapter~II, Section~1 and Chapter~IV, Theorem~4.1]{RevuzYor1999}.
+
+\paragraph{\textbf{Literature and storyline.}}
+The estimates in this appendix also have a useful human history.  Gronwall
+worked across engineering and analysis; the biographical account of his work
+explains how the inequality that now bears his name emerged from differential
+equations rather than from an abstract lemma factory
+\cite{GronwallMacTutor}.  It\^o's Kyoto Prize profile dates his construction of
+stochastic integration to 1942 and emphasizes how it supplied a calculus for
+random paths that ordinary differentiation cannot handle
+\cite{ItoKyotoPrize1998}.  Doob then built martingale theory into a systematic
+part of probability; his National Academy memoir records the development of
+that viewpoint and its influence on modern stochastic processes
+\cite{DoobNASMemoir2016}.  Their results form the repeated proof pipeline of
+these notes: deterministic growth is closed by Gronwall, stochastic maxima by
+Doob or BDG, and nonlinear dynamics by applying those inequalities before a
+final deterministic comparison.  Remembering the problems these tools were
+created to solve makes them easier to use correctly than treating them as a
+list of interchangeable black boxes.
 
 \begin{thebibliography}{99}
 
@@ -3742,6 +4495,12 @@ ICLR, 2020;
 S.~Chen, Z.~Lin, Y.~Polyanskiy, and P.~Rigollet,
 \emph{Quantitative clustering in mean-field Transformer models},
 \href{https://arxiv.org/abs/2504.14697}{arXiv:2504.14697}, revised 2026.
+
+\bibitem{CriscitielloEtAl2026Synchronization}
+C.~Criscitiello, Q.~Rebjock, A.~D.~McRae, and N.~Boumal,
+\emph{Synchronization on circles and spheres with nonlinear interactions},
+SIAM J. Appl. Dyn. Syst. \textbf{25} (2026), no.~2, 1207--1237;
+\href{https://doi.org/10.1137/24M1699759}{doi:10.1137/24M1699759}.
 
 \bibitem{EdelmanEtAl2022InductiveBias}
 B.~L.~Edelman, S.~Goel, S.~Kakade, and C.~Zhang,
@@ -3900,6 +4659,27 @@ equations},
 Proc. Natl. Acad. Sci. USA \textbf{56} (1966), no.~6, 1907--1911.
 \href{https://doi.org/10.1073/pnas.56.6.1907}
 {doi:10.1073/pnas.56.6.1907}.
+
+\bibitem{ErdosSchleinYau2007NLS}
+L.~Erd\H{o}s, B.~Schlein, and H.-T.~Yau,
+\emph{Derivation of the cubic non-linear Schr\"odinger equation from quantum
+dynamics of many-body systems},
+Invent. Math. \textbf{167} (2007), no.~3, 515--614.
+\href{https://doi.org/10.1007/s00222-006-0022-1}
+{doi:10.1007/s00222-006-0022-1}.
+
+\bibitem{DengHani2023WKE}
+Y.~Deng and Z.~Hani,
+\emph{Full derivation of the wave kinetic equation},
+Invent. Math. \textbf{233} (2023), no.~2, 543--724.
+\href{https://doi.org/10.1007/s00222-023-01189-2}
+{doi:10.1007/s00222-023-01189-2}.
+
+\bibitem{DengHani2026Chaos}
+Y.~Deng and Z.~Hani,
+\emph{Propagation of chaos and higher order statistics in wave kinetic theory},
+J. Eur. Math. Soc. \textbf{28} (2026), no.~2, 673--733.
+\href{https://doi.org/10.4171/JEMS/1488}{doi:10.4171/JEMS/1488}.
 
 \bibitem{Kantorovich1942}
 L.~V.~Kantorovich,
