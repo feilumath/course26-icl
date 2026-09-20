@@ -20,7 +20,7 @@
 \newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
-% \theoremstyle{definition} 
+% \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{example}[theorem]{Example}
 \newtheorem{assumption}[theorem]{Assumption}
@@ -61,13 +61,12 @@
 These notes develop the interacting-particle viewpoint on self-attention.
 The mathematical spine is the passage from finite particle updates to
 measure-valued dynamics, followed by continuous depth, collective behavior,
-stability, and the inverse problem of learning an interaction law.  The notes
+and stability.  The notes
 distinguish exact finite-token identities from mean-field and continuous-depth
 approximations, and they state the assumptions under which those approximations
-are justified.  A final discussion connects the common object---a learned
-nonlocal operator on empirical measures---to generative modeling, in-context
-learning, operator learning, optimal transport, inverse problems, and
-architecture design.
+are justified.  The companion notes \emph{Learning Interactions in Particle
+Systems and Attention} develop the inverse and statistical questions after
+this forward foundation is in place.
 \end{abstract}
 
 \maketitle
@@ -107,8 +106,7 @@ The sections follow one chain:
   \text{finite interacting particles}
   &\longrightarrow \text{Wasserstein transport and gradient flow}\\
   &\longrightarrow \text{attention as a nonlocal particle update}\\
-  &\longrightarrow \text{continuous depth, clustering, and stability}\\
-  &\longrightarrow \text{learning the interaction from data}.
+  &\longrightarrow \text{continuous depth, clustering, and stability}.
 \end{split}
 \]
 The prerequisites are It\^o's formula, basic ODE/SDE well-posedness, weak
@@ -795,7 +793,7 @@ at the fixed point $m=\mu$, gives $\mu\in C([0,T];\cP_2(\R^d))$.
 \end{proof}
 
 Figure~\ref{fig:synchronous-coupling-errors} illustrates how the auxiliary
-synchronous coupling separates the remaining empirical sampling error. 
+synchronous coupling separates the remaining empirical sampling error.
 
 \begin{figure}[htbp]
 \centering
@@ -1011,7 +1009,7 @@ width.  This balance reappears in noisy attention and generative samplers.
 \end{example}
 
 
-\begin{exercise}[Mean-field scaling and its alternatives] 
+\begin{exercise}[Mean-field scaling and its alternatives]
 Replace $1/N$ in \eqref{eq:particles} by $N^{-\gamma}$ for the consensus
 kernel.  Determine the relaxation time $\tau_N$, defined by
 $e^{-t/\tau_N}$ being the contraction factor of a centered particle
@@ -1184,7 +1182,7 @@ nonlinear particle.
   it from many initial conditions is an operator-learning problem.
   \item The empirical weak identity \eqref{eq:empirical-weak} will become a
   derivative-free regression equation for the inverse problem in
-  Section~\ref{sec:learning-ips}.
+  the companion notes on learning interaction laws.
   \item In a Transformer, tokens are not i.i.d.\ at later layers; the point of
   the theorem is that weak mean-field interaction can nevertheless create an
   asymptotically independent nonlinear description under the stated model.
@@ -2388,7 +2386,12 @@ At an empirical measure this gives the exact identity
 \]
 This is the unnormalized, signed projected linear-attention model. Related deep linear Transformer dynamics are analyzed in \cite{LiEtAl2026DeepLinear}
 
+These formulas establish the empirical-measure interactions.  Their
+variational status is addressed after the continuous-depth equation has been
+introduced; see Section~\ref{sec:attention-gradient-flow} and
+Exercise~\ref{ex:gradient-and-nongradient-attention}.
 
+%%%%
 \subsection{Regularity of the attention field}
 
 The query and the measure enter attention in different ways.  At a fixed
@@ -2847,9 +2850,7 @@ to consensus and collapse; and treating $\theta$ or the composite interaction
 as unknown leads to an inverse problem.  In Part~IV, a context-dependent
 attention field will be interpreted as an algorithm that infers a latent task.
 
-
-
-%%%%%%%%%% 
+%%%%%%%%%%%%%%%
 \section{Continuous depth and kinetic limits}
 \label{sec:continuous-depth}
 \paragraph{\textbf{Key question}}
@@ -3026,6 +3027,7 @@ $\mu_t=(F_t)_\#\mu_0$. If $\mu_t^N\to\mu_t$ strongly enough to pass through the 
 
 %%%%%%%%%%%%%%%%
 \subsection{What the gradient-flow viewpoint says about attention}
+\label{sec:attention-gradient-flow}
 
 Continuous depth and gradient flow are different assertions.
 Equation~\eqref{eq:attention-pde} is a continuity equation for every
@@ -3405,11 +3407,11 @@ of the score.  For general matrices, the unnormalized field is
  \widetilde\Phi_{Q,K,V}[\mu](x)
  =\int e^{x^\top Q^\top Ky/\tau}Vy\,\mu(\dd y).
 \]
-Writing $A=Q^\top K$, the gradient of
-$\tau e^{x^\top Ay/\tau}$ with respect to $x$ is
-$e^{x^\top Ay/\tau}Ay$.  A symmetric pair energy therefore requires special
-algebraic compatibility, for example $A=A^\top$ and $V$ proportional to
-$A$.  Generic $Q,K,V$ do not satisfy this condition, and row normalization
+Writing $B=Q^\top K$, the gradient of
+$\tau e^{x^\top By/\tau}$ with respect to $x$ is
+$e^{x^\top By/\tau}By$.  A symmetric pair energy therefore requires special
+algebraic compatibility, for example $B=B^\top$ and $V$ proportional to
+$B$. Generic $Q,K,V$ do not satisfy this condition, and row normalization
 cannot create an energy when the underlying pair field is not variational.
 
 Several further qualifications matter.  Causal masks destroy pair symmetry;
@@ -3422,6 +3424,216 @@ Euler step, whose energy monotonicity may require a step-size restriction.
 Thus identity attention---and specially tied symmetric extensions---has the
 gradient structure derived above; a generic Transformer block inherits the
 continuity-equation description, but not this Lyapunov theory.
+
+The variational criterion can now be tested on the projected attention
+fields introduced in \eqref{eq:spherical-attention-field} and
+\eqref{eq:projected-linear-attention-field}.  Part~(b) below is the spherical
+counterpart of the identity-attention calculation above, with
+$\gamma=\tau^{-1}$; parts~(a) and~(c) contrast a matched linear field with an
+explicit non-variational one.
+
+
+\begin{exercise}[Testing the variational criterion: projected attention]
+\label{ex:gradient-and-nongradient-attention}
+Let $\mu\in\cP(\mathbb S^{d-1})$, and interpret a velocity field through
+the continuity equation
+\[
+ \partial_t\mu_t+\diver_{\mathbb S}
+ \bigl(\mu_t b[\mu_t]\bigr)=0.
+\]
+Here spherical $W_2$ means the $2$-Wasserstein distance whose transport cost
+is the squared round-geodesic distance on $\mathbb S^{d-1}$.
+Throughout the exercise, the attention parameters are fixed in depth, so the
+energies under consideration are autonomous.
+\begin{enumerate}[label=(\alph*),leftmargin=*]
+\item For the matched projected linear field $A=V=I$, show that
+\[
+ b_{I,I}^{\mathrm{lin}}[\mu](x)
+ =\mathbf P_x^\perp M[\mu]x
+\]
+is the spherical $W_2$ gradient ascent of
+\[
+ \mathcal J_{\mathrm{Oja}}(\mu)
+ :=\frac14\norm{M[\mu]}_F^2
+ =\frac14\iint_{\mathbb S^{d-1}\times\mathbb S^{d-1}}
+       \ip{x}{y}^2\,\mu(\dd x)\mu(\dd y).
+\]
+
+\item Fix $\gamma>0$.  Show that the unnormalized projected
+identity-softmax field
+\[
+ \widetilde b_\gamma[\mu](x)
+ :=\mathbf P_x^\perp\int e^{\gamma\ip{x}{y}}y\,\mu(\dd y)
+\]
+is the spherical $W_2$ gradient ascent of
+\[
+ \mathcal J_\gamma(\mu)
+ :=\frac1{2\gamma}
+ \iint\left(e^{\gamma\ip{x}{y}}-1\right)
+       \mu(\dd x)\mu(\dd y).
+\]
+Explain why the normalized field \eqref{eq:spherical-attention-field} is not
+the standard $W_2$ gradient of this energy, but is its gradient for the
+law-dependent tangent inner product
+\[
+ g_\mu(v,w)
+ :=\int_{\mathbb S^{d-1}}Z_\mu(x)\ip{v(x)}{w(x)}\,\mu(\dd x),
+ \qquad
+ Z_\mu(x):=\int e^{\gamma\ip{x}{y}}\,\mu(\dd y).
+\]
+
+\item Give a simple attention field that is not a gradient flow.  In
+particular, take $d=2$, $A=I$, and
+\[
+ V=\Omega:=\begin{pmatrix}0&-1\\1&0\end{pmatrix}
+\]
+in \eqref{eq:projected-linear-attention-field}.  Evaluate the field at a
+Dirac law $\mu=\delta_x$, $x\in\mathbb S^1$, and use the resulting trajectory
+to rule out any autonomous gradient-flow representation with a single-valued
+$C^1$ energy and a positive-definite metric.
+\end{enumerate}
+\end{exercise}
+
+\begin{proof}[Solution]
+\emph{(a) The self-consistent Oja energy.}
+Let $\eta$ be a finite signed measure of zero total mass and set
+\[
+ H:=\int yy^\top\,\eta(\dd y).
+\]
+Since $M[\mu+\varepsilon\eta]=M[\mu]+\varepsilon H$, differentiation gives
+\begin{align*}
+ \left.\frac{\dd}{\dd\varepsilon}
+ \mathcal J_{\mathrm{Oja}}(\mu+\varepsilon\eta)
+ \right|_{\varepsilon=0}
+ &=\frac12\operatorname{tr}\bigl(M[\mu]H\bigr)\\
+ &=\frac12\int y^\top M[\mu]y\,\eta(\dd y).
+\end{align*}
+Thus, up to an additive constant,
+\[
+ \frac{\delta\mathcal J_{\mathrm{Oja}}}{\delta\mu}(x)
+ =\frac12x^\top M[\mu]x.
+\]
+Taking the Riemannian gradient on the sphere yields
+\[
+ \nabla_{\mathbb S}
+ \frac{\delta\mathcal J_{\mathrm{Oja}}}{\delta\mu}(x)
+ =\mathbf P_x^\perp M[\mu]x
+ =b_{I,I}^{\mathrm{lin}}[\mu](x).
+\]
+Hence self-consistency does not destroy the variational structure in this
+matched case: the flow ascends $\mathcal J_{\mathrm{Oja}}$, or equivalently
+descends the energy $-\mathcal J_{\mathrm{Oja}}$.
+
+\emph{(b) Identity-softmax and the role of the metric.}
+The kernel $e^{\gamma\ip{x}{y}}$ is symmetric.  Therefore
+\begin{align*}
+ \left.\frac{\dd}{\dd\varepsilon}
+ \mathcal J_\gamma(\mu+\varepsilon\eta)
+ \right|_{\varepsilon=0}
+ =\frac1\gamma\int
+ \left[\int\left(e^{\gamma\ip{x}{y}}-1\right)\mu(\dd y)\right]
+ \eta(\dd x),
+\end{align*}
+and we may take
+\[
+ \frac{\delta\mathcal J_\gamma}{\delta\mu}(x)
+ =\frac1\gamma\int
+ \left(e^{\gamma\ip{x}{y}}-1\right)\mu(\dd y).
+\]
+The constant $-1$ disappears after differentiation in $x$, and hence
+\begin{align*}
+ \nabla_{\mathbb S}
+ \frac{\delta\mathcal J_\gamma}{\delta\mu}(x)
+ &=\mathbf P_x^\perp\int
+ e^{\gamma\ip{x}{y}}y\,\mu(\dd y)\\
+ &=\widetilde b_\gamma[\mu](x).
+\end{align*}
+This proves the standard spherical $W_2$ gradient-ascent statement for the
+unnormalized field.
+
+For the normalized field,
+\[
+ b_\gamma^{\mathrm{sph}}[\mu](x)
+ =\frac1{Z_\mu(x)}\nabla_{\mathbb S}
+ \frac{\delta\mathcal J_\gamma}{\delta\mu}(x).
+\]
+The factor $Z_\mu(x)^{-1}$ depends on both the state $x$ and the current law,
+so this is not the standard $W_2$ gradient, whose tangent inner product is
+$\int\ip{v}{w}\dd\mu$.  It is, however, exactly the gradient for $g_\mu$:
+on the sphere,
+\[
+ e^{-\gamma}\leq Z_\mu(x)\leq e^\gamma,
+\]
+so $g_\mu$ is positive and uniformly equivalent to the ordinary
+$L^2(\mu)$ velocity inner product.  For an intrinsic metric on measure-valued
+tangent vectors, one uses the minimum-$g_\mu$-norm velocity representing the
+continuity equation.  For every tangent test field $w$, we have
+\begin{align*}
+ g_\mu\bigl(b_\gamma^{\mathrm{sph}}[\mu],w\bigr)
+ &=\int Z_\mu(x)\ip{b_\gamma^{\mathrm{sph}}[\mu](x)}{w(x)}
+       \mu(\dd x)\\
+ &=\int\ip{\nabla_{\mathbb S}
+       \frac{\delta\mathcal J_\gamma}{\delta\mu}(x)}{w(x)}\,
+       \mu(\dd x).
+\end{align*}
+Formally, along a smooth solution,
+\[
+ \frac{\dd}{\dd t}\mathcal J_\gamma(\mu_t)
+ =\int\frac1{Z_{\mu_t}(x)}
+ \left|\nabla_{\mathbb S}
+ \frac{\delta\mathcal J_\gamma}{\delta\mu}(x)\right|^2
+ \mu_t(\dd x)\geq0.
+\]
+Thus row normalization changes the geometry, not the Lyapunov functional.
+The calculation identifies the Onsager operator; proving that the associated
+dynamic action defines a complete metric and that weak solutions are curves
+of maximal slope is a separate metric-gradient-flow question.
+
+\emph{(c) A rotational non-gradient attention.}
+For $\mu=\delta_x$ with $x\in\mathbb S^1$,
+$M[\delta_x]=xx^\top$.  Since $x^\top x=1$ and
+$x^\top\Omega x=0$,
+\begin{align*}
+ b_{I,\Omega}^{\mathrm{lin}}[\delta_x](x)
+ &=\mathbf P_x^\perp\Omega xx^\top x
+ =\mathbf P_x^\perp\Omega x
+ =\Omega x.
+\end{align*}
+The characteristic equation is therefore
+\[
+ \dot x_t=\Omega x_t,
+ \qquad x_t=e^{t\Omega}x_0,
+\]
+a nonstationary periodic orbit of period $2\pi$.  An autonomous gradient
+descent $\dot z=-\operatorname{grad}_g\mathcal E(z)$ for a positive-definite
+metric satisfies
+\[
+ \frac{\dd}{\dd t}\mathcal E(z_t)
+ =-\norm{\operatorname{grad}_g\mathcal E(z_t)}_g^2<0
+\]
+along every nonstationary trajectory; gradient ascent has the reversed strict
+inequality.  Neither can return to its starting point.  The periodic Dirac
+trajectory $\mu_t=\delta_{e^{t\Omega}x_0}$ therefore rules out such a gradient
+representation.
+
+For the standard spherical metric, the same obstruction can be read directly
+from circulation.  Parameterize the circle by
+$x(\theta)=(\cos\theta,\sin\theta)$.  Then
+$\Omega x(\theta)=x'(\theta)$ has nonzero circulation,
+\[
+ \int_0^{2\pi}\ip{\Omega x(\theta)}{x'(\theta)}\dd\theta=2\pi,
+\]
+whereas the circulation of the gradient of a single-valued potential is zero.
+This is the elementary obstruction behind the general case: for a prescribed
+metric, the one-form dual to the attention field must be exact.  Generic
+$Q,K,V$, asymmetric masks, or unmatched score and value directions need not
+satisfy this integrability condition.  They still define transport dynamics,
+but not necessarily a gradient flow.  The counterexample does not rule out a
+time-dependent energy, a multivalued angle potential on the universal cover,
+or an evolution generated by a nonsymmetric or indefinite operator; none of
+these is an autonomous positive-definite gradient structure.
+\end{proof}
+
 
 % \begin{exercise}[Noisy attention]
 % Starting from \eqref{eq:noisy-attention-sde}, derive
@@ -3517,6 +3729,47 @@ There are several distinct regimes:
 These limits need not commute.  In particular, a finite-time propagation of
 chaos estimate may grow like $e^{CT}$ and become useless on the long time scale
 needed for clustering or metastable transitions.
+
+Figure~\ref{fig:ips-two-limits} organizes the first three regimes by
+separating the number of particles from the residual step size.  Each arrow
+requires its own uniform estimates; the diagram alone does not assert that
+the two routes give interchangeable limits.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[color=ipsInk,>=Stealth,every node/.style={font=\small,text=ipsInk},
+ box/.style={draw=ipsGuide,rounded corners,align=center,text width=4.6cm,
+             minimum height=1.4cm}]
+ \node[box,draw=ipsOrange,fill=ipsOrange!7] (nd) at (0,0)
+  {Finite tokens, discrete depth\\$x_i^{\ell+1}=x_i^\ell+
+    h\Phi_{\theta^\ell}[\mu^{N,\ell}](x_i^\ell)$};
+ \node[box,draw=ipsTeal,fill=ipsTeal!7] (md) at (8,0)
+  {Measure, discrete depth\\$\mu^{\ell+1}
+   =(\Id+h\Phi_{\theta^\ell}[\mu^\ell])_\#\mu^\ell$};
+ \node[box,draw=ipsOrange,fill=ipsOrange!7] (nc) at (0,-4)
+  {Finite tokens\\continuous depth\\$\dot X_t^i=
+   \Phi_{\theta_t}[\mu_t^N](X_t^i)$};
+ \node[box,draw=ipsTeal,fill=ipsTeal!7] (mc) at (8,-4)
+  {Measure, continuous depth\\$\partial_t\mu_t+
+    \diver(\mu_t\Phi_{\theta_t}[\mu_t])=0$};
+ \draw[->,thick,ipsTeal] (nd)--node[above,align=center]
+  {$N\to\infty$\\fixed depth} (md);
+ \draw[->,thick,ipsTeal] (nc)--node[above,align=center]
+  {$N\to\infty$\\fixed horizon} (mc);
+ \draw[->,thick,ipsPurple] (nd)--node[right,align=left]
+  {$h=T/L\to0$\\fixed $N$} (nc);
+ \draw[->,thick,ipsPurple] (md)--node[left,align=right]
+  {$h=T/L\to0$\\controlled parameters} (mc);
+\end{tikzpicture}
+\caption{Two separate approximation directions, with $d$ and $T$
+fixed.  At finite $N$, passing from tokens to their empirical measure is
+already exact by \eqref{eq:attention-pushforward}; a horizontal arrow here
+instead denotes convergence to a limiting measure.  Vertical arrows express
+Euler consistency and stability.  Joint limits require bounds uniform in
+the other approximation parameter.  Sending $d$ or the horizon $T$ to
+infinity is an additional question.}
+\label{fig:ips-two-limits}
+\end{figure}
 
 A genuine gradient-flow structure can change this long-time picture but
 does not remove the need to distinguish the limits.  For example, geodesic
@@ -3873,6 +4126,54 @@ The unnormalized variant is
 In either case,
 $\frac{\dd}{\dd t}\abs{x_i}^2=2\ip{x_i}{\dot x_i}=0$, so the sphere is
 invariant.
+
+Figure~\ref{fig:ips-spherical-projection} displays the tangent
+projection and the geometry of the two-token example below.  Projection
+removes radial motion, while a nonzero tangent component can still move tokens
+toward one another on the sphere.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[color=ipsInk,>=Stealth,every node/.style={font=\small,text=ipsInk}]
+ \begin{scope}[x=1.65cm,y=1.65cm]
+  \node at (.4,1.7) {Project the attention vector};
+  \draw[ipsGuide] (0,0) circle (1.65cm);
+  \draw[ipsGuide,dashed] (0,0)--(1,0);
+  \fill (0,0) circle (1pt) node[below] {$0$};
+  \fill (1,0) circle (2pt) node[below left] {$x_i$};
+  \draw[ipsGuide,dashed] (1,-.55)--(1,1.1);
+  \draw[->,thick,ipsBlue] (1,0)--(1.3,.8)
+   node[above right] {$b_i$};
+  \draw[->,very thick,ipsTeal] (1,0)--(1,.8)
+   node[above left] {$\mathbf P_{x_i}^{\perp}b_i$};
+  \draw[->,ipsOrange] (1,0)--(1.3,0);
+  \draw[ipsGuide,dashed] (1.3,0)--(1.3,.8)--(1,.8);
+  \node[align=center] at (.4,-1.55)
+   {$b_i=\sum_j a_{ij}x_j$\\$x_i^\top\dot x_i=0$};
+ \end{scope}
+ \begin{scope}[shift={(8.3,0)},x=1.65cm,y=1.65cm]
+  \node at (0,1.7) {Two non-antipodal tokens};
+  \draw[ipsGuide] (0,0) circle (1.65cm);
+  \draw[ipsGuide,dashed] (0,0)--({cos(55)},{sin(55)});
+  \draw[ipsGuide,dashed] (0,0)--({cos(55)},{-sin(55)});
+  \fill[ipsBlue] ({cos(55)},{sin(55)}) circle (2pt) node[above right] {$x_1$};
+  \fill[ipsOrange] ({cos(55)},{-sin(55)}) circle (2pt) node[below right] {$x_2$};
+  \draw[->,thick,ipsBlue] ({cos(49)},{sin(49)}) arc[start angle=49,end angle=13,radius=1.65cm];
+  \draw[->,thick,ipsOrange] ({cos(49)},{-sin(49)}) arc[start angle=-49,end angle=-13,radius=1.65cm];
+  \fill[ipsPurple] (1,0) circle (2pt) node[right] {$x_\infty$};
+  \node[align=center] at (0,-1.55)
+   {$c=\ip{x_1}{x_2}$\\$-1<c<1\ \Longrightarrow\ \dot c>0$};
+ \end{scope}
+\end{tikzpicture}
+\caption{A great-circle view of spherical attention.  Left: the
+vector $b_i$ is drawn with its tail at $x_i$ and split into normal and tangent
+components; only the tangent component enters \eqref{eq:spherical-sa}.
+Right: for two non-antipodal initial tokens, the invariant plane contains
+arcs toward their common limit, as quantified by
+\eqref{eq:two-token-correlation}.  Exactly antipodal tokens instead have
+zero tangent velocity and remain stationary.}
+\label{fig:ips-spherical-projection}
+\end{figure}
 
 Define the average similarity energy as
 \begin{equation}\label{eq:spherical-attention-energy}
@@ -4589,10 +4890,25 @@ dissipative or normalized blocks can remain stable at greater depth.
 \newpage
 
 
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%% 
+\section*{Synthesis and reading route}
+The first six sections establish the forward mathematical structure needed for
+the learning questions developed in the companion notes.  The dependency is
+\[
+\begin{aligned}
+ \text{finite IPS}
+ &\longrightarrow \text{measure dynamics and Wasserstein geometry}\\
+ &\longrightarrow \text{attention as an exact empirical interaction}\\
+ &\longrightarrow \text{depth limits, collective behavior, and stability}.
+\end{aligned}
+\]
+For a first reading, follow the definitions and principal estimates in this
+order.  The detailed proofs, examples, and exercises can then be used to test
+where compact support, Lipschitz regularity, exchangeability, residual
+scaling, or dissipativity enters.  The companion notes \emph{Learning
+Interactions in Particle Systems and Attention} begin from the inverse
+question: which part of an interaction law is identifiable from data, at what
+statistical rate, and how does forward stability convert recovery error into
+rollout error?
 
 \appendix
 \section{ODE and SDE preliminaries}
@@ -5288,6 +5604,12 @@ Stochastic Process. Appl. \textbf{132} (2021), 135--163.
 \href{https://doi.org/10.1016/j.spa.2020.10.005}
 {doi:10.1016/j.spa.2020.10.005}.
 
+\bibitem{LiEtAl2026DeepLinear}
+S.~Li, T.~J.~Maranzatto, J.~Peszek, T.~Teolis, S.~Akkoc, K.~Riedl,
+S.~Ulukus, and N.~Garc\'ia Trillos,
+\emph{On the diverse dynamical behaviors arising in deep linear Transformers},
+\href{https://arxiv.org/abs/2607.18584}{arXiv:2607.18584}, 2026.
+
 \bibitem{LMT2022Stochastic}
 F.~Lu, M.~Maggioni, and S.~Tang,
 \emph{Learning interaction kernels in stochastic systems of interacting
@@ -5454,6 +5776,14 @@ understanding},
 Google Research Blog, August~31, 2017.
 \href{https://research.google/blog/transformer-a-novel-neural-network-architecture-for-language-understanding/}
 {Google Research report}.
+
+\bibitem{XiongEtAl2020}
+R.~Xiong, Y.~Yang, D.~He, K.~Zheng, S.~Zheng, C.~Xing, H.~Zhang,
+Y.~Lan, L.~Wang, and T.~Liu,
+\emph{On layer normalization in the Transformer architecture},
+Proceedings of Machine Learning Research \textbf{119} (2020), 10524--10533.
+\href{https://proceedings.mlr.press/v119/xiong20b.html}
+{PMLR publication page}.
 
 \bibitem{HeEtAl2016ResNet}
 K.~He, X.~Zhang, S.~Ren, and J.~Sun,
