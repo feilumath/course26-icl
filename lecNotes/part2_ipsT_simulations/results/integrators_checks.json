@@ -1,0 +1,39 @@
+{
+  "model": "dx_i/dt = mean(x) - x_i",
+  "initial": [
+    -2.0,
+    -0.5,
+    0.25,
+    1.0,
+    3.0
+  ],
+  "horizon": 2,
+  "checks": {
+    "Euler": {
+      "expected_order": 1,
+      "observed_order": 1.0037411908459557,
+      "mean_preserved": true
+    },
+    "Midpoint RK2": {
+      "expected_order": 2,
+      "observed_order": 2.017104059271518,
+      "mean_preserved": true
+    },
+    "Classical RK4": {
+      "expected_order": 4,
+      "observed_order": 4.018796289604213,
+      "mean_preserved": true
+    },
+    "Implicit Euler": {
+      "expected_order": 1,
+      "observed_order": 0.9962293912205635,
+      "mean_preserved": true
+    },
+    "Implicit midpoint": {
+      "expected_order": 2,
+      "observed_order": 2.0000704494169197,
+      "mean_preserved": true
+    }
+  },
+  "implicit_solves": "Exact for this linear system only"
+}

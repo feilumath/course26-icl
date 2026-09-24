@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="500" viewBox="0 0 1100 500">
+<rect width="1100" height="500" fill="white"/>
+<g font-family="sans-serif" font-size="14" fill="#263238">
+<text x="550" y="25" text-anchor="middle" font-size="19">Consensus benchmark: accuracy and damping</text>
+<text x="287.5" y="48" text-anchor="middle">Error at T = 2</text>
+<path d="M75,60 V390 H500" fill="none" stroke="#AAB2BC"/>
+<text x="845.0" y="48" text-anchor="middle">Centered-cloud size, h = 2.5</text>
+<path d="M650,60 V390 H1040" fill="none" stroke="#AAB2BC"/>
+<text x="66" y="95.0" text-anchor="end">10^-2</text>
+<path d="M75,90.0 H500" stroke="#e8ecef"/>
+<text x="66" y="155.0" text-anchor="end">10^-4</text>
+<path d="M75,150.0 H500" stroke="#e8ecef"/>
+<text x="66" y="215.0" text-anchor="end">10^-6</text>
+<path d="M75,210.0 H500" stroke="#e8ecef"/>
+<text x="66" y="275.0" text-anchor="end">10^-8</text>
+<path d="M75,270.0 H500" stroke="#e8ecef"/>
+<text x="66" y="335.0" text-anchor="end">10^-10</text>
+<path d="M75,330.0 H500" stroke="#e8ecef"/>
+<text x="66" y="395.0" text-anchor="end">10^-12</text>
+<path d="M75,390.0 H500" stroke="#e8ecef"/>
+<text x="75.0" y="412" text-anchor="middle">8</text>
+<text x="181.25" y="412" text-anchor="middle">16</text>
+<text x="287.5" y="412" text-anchor="middle">32</text>
+<text x="393.75" y="412" text-anchor="middle">64</text>
+<text x="500.0" y="412" text-anchor="middle">128</text>
+<text x="287.5" y="435" text-anchor="middle">Number of steps (log scale)</text>
+<polyline points="75.00,67.03 181.25,76.32 287.50,85.48 393.75,94.58 500.00,103.64" fill="none" stroke="#0072B2" stroke-width="2"/>
+<circle cx="75.00" cy="67.03" r="3" fill="#0072B2"/>
+<circle cx="181.25" cy="76.32" r="3" fill="#0072B2"/>
+<circle cx="287.50" cy="85.48" r="3" fill="#0072B2"/>
+<circle cx="393.75" cy="94.58" r="3" fill="#0072B2"/>
+<circle cx="500.00" cy="103.64" r="3" fill="#0072B2"/>
+<polyline points="75.00,97.33 181.25,116.73 287.50,135.43 393.75,153.81 500.00,172.02" fill="none" stroke="#00856A" stroke-width="2"/>
+<circle cx="75.00" cy="97.33" r="3" fill="#00856A"/>
+<circle cx="181.25" cy="116.73" r="3" fill="#00856A"/>
+<circle cx="287.50" cy="135.43" r="3" fill="#00856A"/>
+<circle cx="393.75" cy="153.81" r="3" fill="#00856A"/>
+<circle cx="500.00" cy="172.02" r="3" fill="#00856A"/>
+<polyline points="75.00,172.36 181.25,209.85 287.50,246.65 393.75,283.11 500.00,319.41" fill="none" stroke="#C86422" stroke-width="2"/>
+<circle cx="75.00" cy="172.36" r="3" fill="#C86422"/>
+<circle cx="181.25" cy="209.85" r="3" fill="#C86422"/>
+<circle cx="287.50" cy="246.65" r="3" fill="#C86422"/>
+<circle cx="393.75" cy="283.11" r="3" fill="#C86422"/>
+<circle cx="500.00" cy="319.41" r="3" fill="#C86422"/>
+<polyline points="75.00,68.10 181.25,76.86 287.50,85.75 393.75,94.71 500.00,103.71" fill="none" stroke="#7B61A8" stroke-width="2"/>
+<circle cx="75.00" cy="68.10" r="3" fill="#7B61A8"/>
+<circle cx="181.25" cy="76.86" r="3" fill="#7B61A8"/>
+<circle cx="287.50" cy="85.75" r="3" fill="#7B61A8"/>
+<circle cx="393.75" cy="94.71" r="3" fill="#7B61A8"/>
+<circle cx="500.00" cy="103.71" r="3" fill="#7B61A8"/>
+<polyline points="75.00,108.91 181.25,127.01 287.50,145.08 393.75,163.14 500.00,181.21" fill="none" stroke="#263238" stroke-width="2"/>
+<circle cx="75.00" cy="108.91" r="3" fill="#263238"/>
+<circle cx="181.25" cy="127.01" r="3" fill="#263238"/>
+<circle cx="287.50" cy="145.08" r="3" fill="#263238"/>
+<circle cx="393.75" cy="163.14" r="3" fill="#263238"/>
+<circle cx="500.00" cy="181.21" r="3" fill="#263238"/>
+<text x="641" y="395.0" text-anchor="end">10^-18</text>
+<path d="M650,390.0 H1040" stroke="#e8ecef"/>
+<text x="641" y="305.0" text-anchor="end">10^-12</text>
+<path d="M650,300.0 H1040" stroke="#e8ecef"/>
+<text x="641" y="215.0" text-anchor="end">10^-6</text>
+<path d="M650,210.0 H1040" stroke="#e8ecef"/>
+<text x="641" y="125.0" text-anchor="end">10^0</text>
+<path d="M650,120.0 H1040" stroke="#e8ecef"/>
+<text x="641" y="65.0" text-anchor="end">10^4</text>
+<path d="M650,60.0 H1040" stroke="#e8ecef"/>
+<text x="650.0" y="412" text-anchor="middle">0</text>
+<text x="747.5" y="412" text-anchor="middle">4</text>
+<text x="845.0" y="412" text-anchor="middle">8</text>
+<text x="942.5" y="412" text-anchor="middle">12</text>
+<text x="1040.0" y="412" text-anchor="middle">16</text>
+<text x="845.0" y="435" text-anchor="middle">Step number; ratio to initial RMS spread</text>
+<polyline points="650.00,120.00 674.38,117.36 698.75,114.72 723.12,112.08 747.50,109.43 771.88,106.79 796.25,104.15 820.62,101.51 845.00,98.87 869.38,96.23 893.75,93.59 918.12,90.94 942.50,88.30 966.88,85.66 991.25,83.02 1015.62,80.38 1040.00,77.74" fill="none" stroke="#0072B2" stroke-width="2"/>
+<polyline points="650.00,120.00 674.38,116.84 698.75,113.67 723.12,110.51 747.50,107.35 771.88,104.19 796.25,101.02 820.62,97.86 845.00,94.70 869.38,91.53 893.75,88.37 918.12,85.21 942.50,82.05 966.88,78.88 991.25,75.72 1015.62,72.56 1040.00,69.40" fill="none" stroke="#00856A" stroke-width="2"/>
+<polyline points="650.00,120.00 674.38,122.82 698.75,125.64 723.12,128.47 747.50,131.29 771.88,134.11 796.25,136.93 820.62,139.75 845.00,142.58 869.38,145.40 893.75,148.22 918.12,151.04 942.50,153.86 966.88,156.69 991.25,159.51 1015.62,162.33 1040.00,165.15" fill="none" stroke="#C86422" stroke-width="2"/>
+<polyline points="650.00,120.00 674.38,128.16 698.75,136.32 723.12,144.48 747.50,152.64 771.88,160.81 796.25,168.97 820.62,177.13 845.00,185.29 869.38,193.45 893.75,201.61 918.12,209.77 942.50,217.93 966.88,226.09 991.25,234.25 1015.62,242.42 1040.00,250.58" fill="none" stroke="#7B61A8" stroke-width="2"/>
+<polyline points="650.00,120.00 674.38,134.31 698.75,148.63 723.12,162.94 747.50,177.25 771.88,191.57 796.25,205.88 820.62,220.20 845.00,234.51 869.38,248.82 893.75,263.14 918.12,277.45 942.50,291.76 966.88,306.08 991.25,320.39 1015.62,334.70 1040.00,349.02" fill="none" stroke="#263238" stroke-width="2"/>
+<path d="M40,468 h24" stroke="#0072B2" stroke-width="3"/>
+<text x="69" y="473">Euler</text>
+<path d="M256,468 h24" stroke="#00856A" stroke-width="3"/>
+<text x="285" y="473">Midpoint RK2</text>
+<path d="M472,468 h24" stroke="#C86422" stroke-width="3"/>
+<text x="501" y="473">Classical RK4</text>
+<path d="M688,468 h24" stroke="#7B61A8" stroke-width="3"/>
+<text x="717" y="473">Implicit Euler</text>
+<path d="M904,468 h24" stroke="#263238" stroke-width="3"/>
+<text x="933" y="473">Implicit midpoint</text>
+</g></svg>

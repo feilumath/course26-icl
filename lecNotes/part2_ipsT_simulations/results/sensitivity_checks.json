@@ -1,0 +1,25 @@
+{
+  "configuration": {
+    "radius": 1.0,
+    "temperatures": [
+      0.25,
+      0.5,
+      1,
+      2
+    ],
+    "points": 241,
+    "log10_epsilon_min": -8,
+    "method": "exact analytic formulas; no random sampling"
+  },
+  "checks": {
+    "max_field_vs_weighted_softmax_error": 1.1102230246251565e-16,
+    "max_derivative_vs_central_difference_error": 1.333333443653828e-10,
+    "max_rare_weight_vs_weighted_softmax_error": 0.0,
+    "additional_checks": [
+      "derivative maximum R^2/tau at x=0",
+      "1 <= amplification <= min(exp(2R^2/tau), 1/epsilon)",
+      "rare-mass amplification limit exp(2R^2/tau)",
+      "half attention weight at epsilon=1/(1+exp(2R^2/tau))"
+    ]
+  }
+}

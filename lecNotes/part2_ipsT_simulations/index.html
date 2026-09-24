@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Part II: attention simulations</title>
+<style>
+  body { max-width: 1000px; margin: 3rem auto; padding: 0 1.2rem; color: #263238;
+    background: #fafbfc; font: 17px/1.6 system-ui, sans-serif; }
+  h1 { font-size: 2rem; line-height: 1.2; } h2 { font-size: 1.3rem; }
+  section { background: white; border: 1px solid #d8dee5; padding: 1rem 1.5rem; margin: 1.5rem 0; }
+  a { color: #0072b2; } code { font-size: .9em; }
+  .open { display: inline-block; padding: .35rem .8rem; border: 1px solid #0072b2; border-radius: 4px; }
+  .detail { color: #50616b; font-size: .94rem; }
+</style>
+<h1>Attention as an interacting particle system</h1>
+<p>Numerical demonstrations for Part II. Open the examples below for lecture presentation;
+all figures, data, and controls work offline.</p>
+
+<section>
+  <h2>1. Query sensitivity and rare mass</h2>
+  <p>Move the query, change the temperature, or add a small mass at a preferred key.
+  Compare the query derivative with the much larger amplification of a measure perturbation.</p>
+  <p><a class="open" href="results/sensitivity.html">Open interactive plots</a></p>
+  <p class="detail"><a href="results/sensitivity.svg">Static figure</a> ·
+    <a href="results/sensitivity_query.csv">Query data</a> ·
+    <a href="results/sensitivity_rare_mass.csv">Rare-mass data</a></p>
+</section>
+
+<section>
+  <h2>2. Accuracy and stability of time integrators</h2>
+  <p>The solvable consensus system separates time-step accuracy from damping.
+  Euler, RK2, RK4, implicit Euler, and implicit midpoint have different errors and stability limits.</p>
+  <p><a class="open" href="results/integrators.svg">Open comparison figure</a></p>
+  <p class="detail"><a href="results/integrators_accuracy.csv">Error data</a> ·
+    <a href="results/integrators_stability.csv">Amplification factors</a> ·
+    <a href="results/integrators_checks.json">Numerical checks</a></p>
+</section>
+
+<section>
+  <h2>3. Normalized and unnormalized identity attention</h2>
+  <p>Play or scrub the particle trajectories and compare temperatures. These are the raw
+  Euclidean attention equations: the particles can expand while their interaction energy decreases.
+  A stopped unnormalized run marks the displayed radius cutoff, not a stationary solution.</p>
+  <p><a class="open" href="results/dynamics.html">Open animated comparison</a></p>
+  <p class="detail"><a href="results/dynamics.svg">Static figure</a></p>
+</section>
+
+<p class="detail">Regenerate everything with <code>python3 run_all.py</code> in this folder.
+Python 3.10 or newer is sufficient; no third-party packages or internet connection are needed.
+See <a href="README.md">README.md</a> for the equations, settings, checks, and output files.</p>
+</html>
