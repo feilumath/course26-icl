@@ -2929,8 +2929,7 @@ Matching particles with the same labels gives
  \leq\frac1N\sum_{i=1}^N\abs{z_i-w_i}
  \leq\norm{z-w}_N,
 \end{equation}
-where the last inequality is Cauchy--Schwarz.  Minkowski's inequality,
-\eqref{eq:depth-lipschitz}, and \eqref{eq:matched-empirical-w1} now yield
+where the last inequality is Cauchy--Schwarz. Equations \eqref{eq:depth-lipschitz}, and \eqref{eq:matched-empirical-w1} now yield
 \begin{equation}\label{eq:particle-field-lipschitz}
  \norm{F_t^N(z)-F_t^N(w)}_N
  \leq L_x\norm{z-w}_N+L_\mu W_1(\mu_z^N,\mu_w^N)
@@ -3011,6 +3010,25 @@ relevant than infinite-time equilibria.
 
 
 \paragraph{\textbf{Beyond Euler: accuracy, cost, and stability.}}
+The objective of a Transformer is to learn a useful input--output map.  It
+need not approximate a preassigned differential equation, and a higher-order
+ODE solver need not give a better trained Transformer.  Three questions must
+therefore be separated: how well the network fits its task, how faithfully a
+discrete network follows a chosen continuous-depth model, and how sensitive
+its outputs and derivatives are to perturbations.
+
+
+ODE accuracy is useful when the continuous model is itself the intended
+object: for example, a learned transport flow, a physical evolution map, or
+a shared vector field that must be evaluated at different depths or time
+steps.  It is also useful for checking whether a continuous-depth theorem
+faithfully describes a specified residual stack.  For a conventional
+fixed-depth Transformer trained directly on a task, it is a diagnostic or
+a design principle whose value must be tested at comparable training and
+inference cost.  The numerical order in the following table is not a
+ranking of task performance.
+
+
 Once a regular parameter curve $t\mapsto\theta_t$ has been specified,
 \eqref{eq:token-ode} is an ODE for the entire cloud, so other ODE solvers
 apply.  For example, the explicit midpoint method is
@@ -3093,6 +3111,32 @@ They do not guarantee that a nonlinear implicit stage is solvable at every
 step size, that a large step is accurate, or that the attention dynamics
 itself converges to consensus.
 
+
+\vspace{2mm}
+\paragraph{\textbf{Stability matters even without an ODE target.}}
+Write a trained network as $G=g_{L-1}\circ\cdots\circ g_0$, and suppose
+$g_\ell$ is $\kappa_\ell$-Lipschitz on the states being compared.  If the
+perturbed computation incurs a local error $\eta_\ell$ at layer $\ell$,
+then its state error obeys
+\[
+ e_{\ell+1}\leq\kappa_\ell e_\ell+\eta_\ell,
+ \qquad
+ e_L\leq\left(\prod_{j=0}^{L-1}\kappa_j\right)e_0
+       +\sum_{\ell=0}^{L-1}\eta_\ell
+                     \prod_{j=\ell+1}^{L-1}\kappa_j.
+\]
+This follows by substitution of the scalar recursion, with an empty product
+equal to $1$.  It controls propagation of input perturbations, quantization,
+and inexact layer solves directly for the discrete network.  For
+differentiable layers, backpropagation contains the transposed Jacobian
+product and has the analogous operator-norm upper bound.  An upper bound
+alone does not prevent vanishing gradients: strong contraction can make token distinctions and backpropagated gradients
+very small.  The useful balance depends on the task;
+a denoiser may benefit from contraction, while transporting distinguishable
+states may require retaining their separation.
+
+
+
 \begin{exercise}[Stability and consensus for four time integrators]
 \label{ex:attention-integrators-consensus}
 Consider the uniform-attention relaxation
@@ -3156,12 +3200,6 @@ actual decay rate $e^{-t}$ accurately.
 \end{proof}
 
 
-
-The script in the repository reproduces this exercise and adds RK4.
-It compares errors against the exact consensus solution as the step size
-is halved and records the amplification factors at several larger step sizes.
-Its implicit updates are solved exactly for this linear benchmark; general
-attention still requires the coupled nonlinear solve described above. 
 
 
 \subsection{The measure equation for continuous-depth attention}
@@ -3477,154 +3515,6 @@ same multiplicative noise but without the correction
 $\beta\nabla Z_{\rho_t}^{-1}$, the diffusion term would instead be
 $\beta\Delta(\rho_t/Z_{\rho_t})$.
 
-
-
-\paragraph{\textbf{Numerical illustration: energy decrease and particle expansion.}}
-\footnote{
-The script \textsf{dynamics.py} in the repository uses
-adaptive RK4 with step doubling and compares the trajectories with a
-smaller-step, tighter-tolerance run.  It records particle spread and energy,
-and stops each run at $t=1.6$ or its first crossing of $R=2.2$.
-This radius cutoff bounds the displayed experiment; it is neither a
-stationary continuation nor a test for blow-up.  At $\tau=1/2$, for example,
-the unnormalized and normalized runs reach it at approximately $0.32308$
-and $1.25272$, respectively.  Each displayed trajectory ends at its own
-recorded time.  The energy identities and one-particle solutions provide
-independent numerical checks. To view the results, open \path{index.html} in that folder.  The
-interactive page has playback, a time slider, temperature selection, and
-current field directions, with an explicit notice when a run has stopped.
-The folder's \path{README.md} describes the equations, settings, and outputs;
-\path{run_all.py} regenerates all three demonstrations and the figure inputs.
-}
-Figure~\ref{fig:identity-attention-simulation} compares the deterministic
-particle equations \eqref{eq:unnormalized-attention-ips} and
-\eqref{eq:normalized-attention-ips} from the same centrally symmetric cloud
-of eight points in $\R^2$, at temperatures $\tau=1/2,1,2$.
-Both calculations use the current empirical measure at every stage.
-For this cloud the variance and maximum radius increase while
-$\mathcal F_{\mathrm{att}}^N$ decreases.  The energy is unbounded below,
-so its decrease does not imply confinement or convergence to a cluster.
-Indeed, for one particle the two equations reduce to
-\[
- \dot x=x\quad\text{(normalized)},\qquad
- \dot x=e^{\abs{x}^2/\tau}x\quad\text{(unnormalized)}.
-\]
-The first has solution $x(t)=e^t x(0)$.  For the second, a nonzero initial
-radius $r_0$ gives the finite escape time
-\[
- t_* =\int_{r_0}^{\infty}\frac{e^{-r^2/\tau}}{r}\,\dd r<\infty.
-\]
-For any normalized finite cloud, the convex-combination bound on the
-velocity instead gives $R(t)\leq e^tR(0)$, where
-$R(t)=\max_i\abs{X_t^i}$, so there is no finite-time escape.  This raw
-attention model must be distinguished from the relaxation field
-$\Phi[\mu](x)-x$ and from projected spherical dynamics.
-
-
-
-\begin{figure}[htbp]
-\centering
-\input{figures/dynamics.tex}
-\begingroup
-\caption{Self-consistent Euclidean identity attention from the same
-symmetric eight-particle cloud.  The top panels show paths at $\tau=1$:
-open circles are initial states and filled circles are final recorded states.
-The normalized run reaches $t=1.6$; the unnormalized run stops at
-$t\approx0.997$ when its maximum radius reaches $2.2$.
-The lower panels use the same axes to compare $R(t)$ at three temperatures;
-the dotted horizontal line is the radius cutoff.
-These computations illustrate expansion and temperature-dependent growth,
-without asserting convergence or a general ordering of the two models.}
-\label{fig:identity-attention-simulation}
-\endgroup
-\end{figure}
-
-\begin{example}[A frozen-measure potential] 
-\label{ex:identity-attention-potential} 
-[Skip in lecture.]
-Freeze $\mu$ and define
-\[
-Z_\mu(x):= \int e^{\ip{x}{y}/\tau}\,\mu(\dd y),\qquad
- P_\mu(x):=\tau\log Z_\mu(x),\qquad
- \pi_x^\mu(\dd y):=\frac{e^{\ip{x}{y}/\tau}}{Z_\mu(x)}\,\mu(\dd y).
-\]
-Differentiation with respect to the query gives
-\begin{equation}\label{eq:identity-attention-log-partition}
- \nabla P_\mu(x)=\Phi[\mu](x),\qquad
- \nabla^2P_\mu(x)=\frac1\tau
- \operatorname{Cov}_{\pi_x^\mu}(Y)\succeq0.
-\end{equation}
-To derive the Hessian, differentiate the partition function twice:
-\begin{align*}
- \nabla Z_\mu(x)   & = \int e^{\ip{x}{y}/\tau}\frac{y}{\tau}\,\mu(\dd y) 
-                     =\frac{Z_\mu(x)}{\tau}\E_{\pi_x^\mu}[Y],\\
- \nabla^2 Z_\mu(x) & = \int e^{\ip{x}{y}/\tau}\frac{yy^\top}{\tau^2}\,\mu(\dd y)
-                     =\frac{Z_\mu(x)}{\tau^2}\E_{\pi_x^\mu}[YY^\top].
-\end{align*}
-Since $P_\mu=\tau\log Z_\mu$, it follows that
-\[
- \begin{aligned}
- \nabla^2P_\mu(x) = \nabla\left(\tau\frac{\nabla Z_\mu(x)}{Z_\mu(x)}\right)
- &=\tau\left(
- \frac{\nabla^2Z_\mu(x)}{Z_\mu(x)}
- -\frac{\nabla Z_\mu(x)\nabla Z_\mu(x)^\top}{Z_\mu(x)^2}
- \right)\\
- &=\frac1\tau\left(
- \E_{\pi_x^\mu}[YY^\top]
- -\E_{\pi_x^\mu}[Y]\E_{\pi_x^\mu}[Y]^\top
- \right)
- =\frac1\tau\operatorname{Cov}_{\pi_x^\mu}(Y).
- \end{aligned}
-\]
-
-Hence residual attention with a frozen key--value law,
-$\dot x_t=\Phi[\mu](x_t)$, is gradient ascent of the convex log-partition
-potential:
-\[
- \frac{\dd}{\dd t}P_\mu(x_t)
- =\left|\nabla P_\mu(x_t)\right|^2\geq0.
-\]
-This identity makes $P_\mu$ a Lyapunov function and rules out a
-nonstationary periodic orbit, but it does not by itself imply convergence:
-gradient ascent of a nonconfining convex function can escape to infinity.
-
-The consensus modification has a different and more useful energy:
-\begin{equation}\label{eq:identity-attention-consensus-potential}
- \dot x_t=\Phi[\mu](x_t)-x_t=-\nabla V_\mu(x_t),
- \qquad
- V_\mu(x):=\frac12\abs{x}^2-P_\mu(x).
-\end{equation}
-Now
-\[
- \frac{\dd}{\dd t}V_\mu(x_t)=-|\nabla V_\mu(x_t)|^2\leq0,
-\]
-and equilibria are precisely the fixed points
-$x_\star=\Phi[\mu](x_\star)$ satisfying
-$0=\nabla V_\mu(x_\star)=x_\star-\nabla P_\mu(x_\star)$. If
-$\supp(\mu)\subset B_R(0)$, then
-\[
- \nabla^2V_\mu(x)
- =I-\frac1\tau\operatorname{Cov}_{\pi_x^\mu}(Y)
- \succeq\left(1-\frac{R^2}{\tau}\right)I.
-\]
-Thus, when $\tau>R^2$, $V_\mu$ is strongly convex, it has a unique
-equilibrium, and
-\[
- |x_t-x_\star|
- \leq e^{-(1-R^2/\tau)t}|x_0-x_\star|.
-\]
-For smaller temperature the potential can be nonconvex, so several attracting
-critical points, saddles, and long plateaus may coexist.  This is the
-variational source of initialization-dependent clustering and metastability.
-In the self-consistent spherical model, compactness and analyticity allow
-Łojasiewicz arguments to upgrade energy convergence to convergence of
-finite-particle trajectories, while well-separated clusters can persist for
-exponentially long times
-\cite{GeshkovskiEtAl2024Metastability,Rigollet2026MeanField}.  A Lyapunov
-function therefore identifies the direction of evolution, but convexity or a
-separate critical-point analysis is still needed for a unique equilibrium and
-a quantitative rate.
-\end{example}
 
 \paragraph{\textbf{Scope and limitations of the variational structure.}}
 The preceding calculation uses two special facts: the identity score is
@@ -4001,7 +3891,7 @@ A genuine gradient-flow structure can change this long-time picture but
 does not remove the need to distinguish the limits.  For example, geodesic
 convexity of the energy can yield contractivity of the measure evolution and
 replace an exponentially growing stability constant by a uniform or decaying
-one.  The calculation in Example~\ref{ex:identity-attention-potential} shows
+one.  The energy identities in Section~\ref{sec:attention-gradient-flow} show
 that an energy identity alone is not enough for contractivity: one must
 also prove geodesic or ordinary convexity, or another mechanism that controls
 the critical points and the dissipation rate.
@@ -4034,17 +3924,16 @@ transports it.  The Euler estimate separates approximation by depth from
 approximation by particle number, while the four-limit warning records why
 neither can be hidden inside the other.
 
-The gradient-flow test gives a
-three-way distinction: symmetric unnormalized identity attention is a standard
+The gradient-flow test gives a three-way distinction: symmetric unnormalized identity attention is a standard
 Wasserstein gradient flow; normalized identity attention is a generalized
 gradient flow in which the gradient is multiplied by $Z_\mu^{-1}$; and
 generic $Q,K,V$ attention has, in
 general, only the transport description.  The linear consensus example in
 Section~\ref{sec:ips} is the quadratic-potential case
 $W(z)=\frac12\abs z^2$.  The self-consistent identity-softmax energy is
-\eqref{eq:attention-free-energy}, while the log-partition potential
-\eqref{eq:identity-attention-log-partition} describes one query when the
-key--value law is frozen.  These distinctions will guide
+\eqref{eq:attention-free-energy}. When the key--value law is frozen,
+the normalized field instead satisfies the query-level log-partition identity
+$\nabla_x[\tau\log Z_\mu(x)]=\Phi[\mu](x)$. These distinctions will guide
 the analysis of clustering, stability, and the inverse problem in the
 subsequent sections.
 
@@ -4071,7 +3960,8 @@ The quantity $D_u(t)$ is the \emph{directional diameter} of the configuration.
 
 
 
-Note first that the directional diameter is nonincreasing. To see this, write $z_i(t)=\ip{u}{X_t^i}$.  The projected velocity is simply the scalar derivative of this projection:
+
+\textbf{Claim 1:} The directional diameter $D_u(t)$ is nonincreasing for each non-zero $u\in \R^d$. To see this, write $z_i(t)=\ip{u}{X_t^i}$.  The projected velocity is simply the scalar derivative of this projection:
 \begin{equation}\label{eq:projected-velocity}
  \dot z_i(t)=\ip{u}{\dot X_t^i}
  =\sum_{j=1}^Na_{ij}(t)(z_j(t)-z_i(t)).
@@ -4099,7 +3989,9 @@ to a constant-index subsequence as $h\downarrow0$, and applying the first-order
 expansion of that $z_i$; the reverse inequality follows by testing every index
 that is active at time $t$.
 Consequently $D_u'(t)\leq0$ at almost every differentiability time, so
-absolute continuity implies that $D_u$ is nonincreasing. Theorem~\ref{thm:diameter} below shows that under the uniform communication assumption, the directional diameter contracts exponentially, and the Euclidean diameter contracts as well.
+absolute continuity implies that $D_u$ is nonincreasing.
+
+Theorem~\ref{thm:diameter} below shows that under the uniform communication assumption, the directional diameter contracts exponentially, and the Euclidean diameter contracts as well.
 
 Also, the convex hull of the configuration is forward invariant.
 Let
@@ -4117,7 +4009,91 @@ create a token state outside the region spanned by the initial tokens.  The
 fact is useful in three ways.  It supplies the a priori bound
 $\max_i|X_t^i|\leq\max_i|X_0^i|$, keeps state-dependent attention scores in a
 controlled range, and identifies a structural limitation of the consensus
-model.  Value maps, MLPs, or residual forcing can move representations outside
+model. Figure~\ref{fig:consensus-hull-diameter} summarizes the two geometric
+consequences of nonnegative row-stochastic averaging.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[color=ipsInk,>=Stealth,
+ every node/.style={font=\small,text=ipsInk},
+ hullzero/.style={draw=ipsBlue,fill=ipsBlue!5,line width=.9pt},
+ hulltime/.style={draw=ipsTeal,fill=ipsTeal!9,line width=.9pt,
+                  densely dashed}]
+ % Convex-hull panel.
+ \begin{scope}
+  \node[font=\small\bfseries] at (0,2.15) {Forward-invariant hull};
+  \path[hullzero]
+   (-2.35,-.85)--(-1.75,1.05)--(-.35,1.52)--(1.60,.92)--
+   (2.18,-.45)--(.72,-1.50)--(-1.20,-1.40)--cycle;
+  \path[hulltime]
+   (-1.20,-.55)--(-1.28,.10)--(-.75,.62)--(.05,.92)--
+   (1.15,.47)--(.78,-.72)--(-.35,-1.02)--cycle;
+  \node[text=ipsBlue] at (1.72,1.24) {$C_0$};
+  \node[text=ipsTeal] at (.35,.23) {$C_t$};
+  \draw[->,very thick,ipsOrange,shorten <=2pt,shorten >=2pt]
+   (-1.75,1.05) .. controls (-1.52,.64) and (-1.05,.92) .. (-.75,.62)
+   node[pos=.48,left=1pt] {$X_s^k$};
+  \foreach \xx/\yy in
+   {-2.35/-.85,-1.75/1.05,-.35/1.52,1.60/.92,2.18/-.45,
+    .72/-1.50,-1.20/-1.40}
+   \fill[ipsBlue] (\xx,\yy) circle (2.1pt);
+  \foreach \xx/\yy in
+   {-1.20/-.55,-1.28/.10,-.75/.62,.05/.92,1.15/.47,
+    .78/-.72,-.35/-1.02}
+   \fill[ipsTeal] (\xx,\yy) circle (2.1pt);
+  \node[above left=1pt] at (-1.75,1.05) {$X_0^k$};
+  \node[above right=1pt] at (-.75,.62) {$X_t^k$};
+  \node at (0,-1.92) {$C_t\subseteq C_0$};
+ \end{scope}
+
+ % Projection panel.
+ \begin{scope}[xshift=7.15cm]
+  \node[font=\small\bfseries] at (0,2.15) {Projection onto a fixed $u$};
+  \draw[->,thick,ipsPurple] (-.55,1.67)--(.55,1.67)
+   node[right] {$u$};
+
+  \draw[ipsBlue,line width=1.1pt] (-2.20,.65)--(2.20,.65);
+  \draw[<->,ipsBlue] (-2.20,1.13)--node[above] {$D_u(0)$}(2.20,1.13);
+  \draw[ipsGuide,densely dotted] (-2.20,.65)--(-2.20,1.13);
+  \draw[ipsGuide,densely dotted] (2.20,.65)--(2.20,1.13);
+  \foreach \xx in {-2.20,-1.10,-.35,.45,1.18,1.72,2.20}
+   \fill[ipsBlue] (\xx,.65) circle (2.1pt);
+  \node[left] at (-2.48,.65) {$t=0$};
+  \node[below=2pt] at (-2.20,.65) {$m_u(0)$};
+  \node[below=2pt] at (2.20,.65) {$M_u(0)$};
+
+  \draw[->,ipsGuide,densely dashed] (-2.12,.35)--(-1.32,-.55);
+  \draw[->,ipsGuide,densely dashed] (2.12,.35)--(1.37,-.55);
+
+  \draw[ipsTeal,line width=1.1pt,densely dashed]
+   (-1.25,-.82)--(1.30,-.82);
+  \draw[<->,ipsTeal] (-1.25,-.32)--node[above] {$D_u(t)$}(1.30,-.32);
+  \draw[ipsGuide,densely dotted] (-1.25,-.82)--(-1.25,-.32);
+  \draw[ipsGuide,densely dotted] (1.30,-.82)--(1.30,-.32);
+  \foreach \xx in {-1.25,-.82,-.31,.05,.42,.88,1.30}
+   \fill[ipsTeal] (\xx,-.82) circle (2.1pt);
+  \node[left] at (-2.48,-.82) {$t>0$};
+  \node[below=2pt] at (-1.25,-.82) {$m_u(t)$};
+  \node[below=2pt] at (1.30,-.82) {$M_u(t)$};
+  \node at (0,-1.62)
+   {$[m_u(t),M_u(t)]\subseteq[m_u(0),M_u(0)]$};
+  \node at (0,-1.98) {$D_u(t)\leq D_u(0)$};
+ \end{scope}
+\end{tikzpicture}
+\caption{Convex-hull invariance and directional nonexpansion for
+\eqref{eq:consensus}.  Left: with
+$C_t=\operatorname{co}\{X_t^1,\ldots,X_t^N\}$, one has
+$C_t\subseteq C_0$.  The orange curve is a schematic trajectory of one token:
+it remains in $C_0$, but need not be straight or lie in the later hull $C_t$
+at earlier times.  Right: projection onto a fixed unit vector $u$ gives a
+nested interval and hence $D_u(t)\leq D_u(0)$.  Restarting the argument at any
+time $s<t$ gives $D_u(t)\leq D_u(s)$.  The figure records nonincrease only;
+exponential contraction requires additional communication
+conditions.}
+\label{fig:consensus-hull-diameter}
+\end{figure}
+
+Value maps, MLPs, or residual forcing can move representations outside
 this hull, so hull invariance should not be attributed to a general
 Transformer block.
 
@@ -4230,7 +4206,7 @@ diameter decay rate is $e^{-t}$.
 \end{proof}
 
 
-\paragraph{\textbf{What is conserved?}}
+\paragraph{\textbf{Conservation of mean and dissipation of variance.}}
 Row stochasticity alone does not conserve the arithmetic mean.  Summing
 \eqref{eq:consensus} gives
 \begin{equation}\label{eq:mean-column-sum}
@@ -4262,23 +4238,6 @@ conservation and predictable contraction are desired.
 
 
 
-\paragraph{\textbf{Why softmax can mix slowly}}
-Suppose all scores in one head lie in $[-S,S]$.  Then
-\[
- a_{ij}\geq\frac{e^{-S}}{Ne^S}=\frac{e^{-2S}}N.
-\]
-Theorem~\ref{thm:diameter} applies with $\alpha=e^{-2S}$.  If
-$S\asymp\tau^{-1}$ is large, the guaranteed contraction time is exponentially
-large in inverse temperature.  This is not merely a weakness of the proof:
-sharp softmax can create nearly disconnected interaction graphs.
-
-At high temperature, weights are nearly uniform and the system rapidly pools
-everything into one cluster.  At low temperature, each query follows a few
-leaders; within-group relaxation can be fast while communication between
-groups is extremely slow.  The resulting multi-cluster state can be
-\emph{metastable}: stable over the depth horizon of interest even if eventual
-consensus occurs.
-
 
 
 
@@ -4308,19 +4267,61 @@ Theorem~\ref{thm:diameter} therefore applies to every initial configuration:
 and the shrinking convex hulls converge to a single point
 $X_\infty\in\operatorname{co}\{X_0^1,\ldots,X_0^N\}$.  The rate can be
 exponentially small when $\tau$ is small, so this theorem is consistent with
-long-lived apparent clusters.  The subtraction of $X_t^i$ is essential: the
+long-lived apparent clusters.
+
+\paragraph{\textbf{Consensus point.}}
+Every consensus configuration $(x,\ldots,x)$ is an equilibrium, so the
+equilibrium equation alone cannot select the limiting point.  The actual
+limit is a convex combination of the initial tokens, but its weights
+generally depend on the entire trajectory. For identity-softmax attention, the path dependence can also be seen directly
+from the drift of the arithmetic mean. Write
+\[
+ s_{ij}(t)=e^{\ip{X_t^i}{X_t^j}/\tau},
+ \qquad \mathcal Z_i(t)=\sum_{k=1}^Ns_{ik}(t).
+\]
+Since $s_{ij}=s_{ji}$, pairing the $(i,j)$ and $(j,i)$ terms gives
+\begin{equation}\label{eq:identity-softmax-mean-drift}
+ \dot{\overline X}_t
+ =\frac1{2N}\sum_{i,j=1}^N
+ s_{ij}(t)\left(\frac1{\mathcal Z_i(t)}-
+                       \frac1{\mathcal Z_j(t)}\right)
+ (X_t^j-X_t^i).
+\end{equation}
+Moreover, if
+$D(t)=\max_{i,j}\abs{X_t^i-X_t^j}$, then row stochasticity and
+Theorem~\ref{thm:diameter} give
+\[
+ \abs{\dot{\overline X}_t}
+ \leq\frac1N\sum_{i,j}a_{ij}(X_t)\abs{X_t^j-X_t^i}
+ \leq D(t)\leq e^{-\alpha_\tau t}D(0).
+\]
+Thus $\dot{\overline X}_t$ is integrable and
+$\overline X_t\to X_\infty$.  Integrating
+\eqref{eq:identity-softmax-mean-drift} yields the trajectory formula
+\begin{equation}\label{eq:identity-softmax-consensus-point-path}
+ X_\infty=\overline X_0+
+ \frac1{2N}\int_0^\infty\sum_{i,j=1}^N
+ s_{ij}(t)\left(\frac1{\mathcal Z_i(t)}-
+                       \frac1{\mathcal Z_j(t)}\right)
+ (X_t^j-X_t^i)\,\dd t.
+\end{equation}
+This explains why the arithmetic mean is not the answer in general.  If
+$A(X_t)$ is doubly stochastic for every $t$, then
+\eqref{eq:mean-column-sum} gives
+$X_\infty=\overline X_0$.  For the present strictly positive symmetric
+kernel, double stochasticity is equivalent to equality of all
+$\mathcal Z_i(t)$, which also makes the integrand above vanish.
+
+\vspace{3mm}
+The subtraction of $X_t^i$ is essential: the
 pure residual flow $\dot X_t^i=\Phi[\mu_t^N](X_t^i)$ is not a convex-combination
 consensus system and the preceding diameter argument does not apply.
 
 
 For projected identity attention on the sphere in Section \ref{sec:spherical-attention}, the conclusion is instead almost-global: Theorem~\ref{thm:spherical-attention-clustering} gives
 single-cluster convergence for almost every finite-particle initialization,
-while exceptional antipodal or other unstable stationary configurations must
-be excluded.  Mean-field exponential convergence to a Dirac mass is also
-available under regularity and parameter assumptions
-\cite{ChenEtAl2026Quantitative,Rigollet2026MeanField}; separated configurations
-can nevertheless remain metastable for exponentially long times
-\cite{GeshkovskiEtAl2024Metastability}.
+while exceptional antipodal or other unstable stationary configurations must be excluded.
+
 
 
 \subsection{Clustering results for projected identity attention on the sphere}\label{sec:spherical-attention}
@@ -4391,7 +4392,7 @@ toward one another on the sphere.
    {$c=\ip{x_1}{x_2}$\\$-1<c<1\ \Longrightarrow\ \dot c>0$};
  \end{scope}
 \end{tikzpicture}
-\caption{A great-circle view of spherical attention.  Left: the
+\caption{A circle view of spherical attention.  Left: the
 vector $b_i$ is drawn with its tail at $x_i$ and split into normal and tangent
 components; only the tangent component enters \eqref{eq:spherical-sa}.
 Right: for two non-antipodal initial tokens, the invariant plane contains
@@ -4444,7 +4445,8 @@ argument.
 \label{thm:spherical-attention-clustering}
 Let $N\geq2$, $d\geq3$, and $\gamma\geq0$.  For either
 \eqref{eq:spherical-sa} or \eqref{eq:spherical-usa}, for almost every initial
-configuration in $(\mathbb S^{d-1})^N$ there exists
+configuration in $(\mathbb S^{d-1})^N$
+(with respect to product Riemannian volume), there exists
 $x_\infty\in\mathbb S^{d-1}$ such that
 \[
  \lim_{t\to\infty}x_i(t)=x_\infty,
@@ -4464,132 +4466,287 @@ converging to such saddles in a measure-zero set.  The phrase ``almost every''
 is essential because exceptional stationary configurations do exist.
 
 %% Exe or skip 
-% \begin{proof}
-% We make the three steps above precise.  Let
-% $\mathcal M=(\mathbb S^{d-1})^N$ with its product-sphere structure, and define
-% \[
-%  \varphi_\gamma(s)=
-%  \begin{cases}
-%   (e^{\gamma s}-1)/\gamma,&\gamma>0,\\
-%   s,&\gamma=0.
-%  \end{cases}
-% \]
-% Then
-% $\mathcal J_{\gamma,N}(X)=(2N^2)^{-1}\sum_{i,j}
-% \varphi_\gamma(\ip{x_i}{x_j})$ is real analytic on $\mathcal M$, and its
-% gradient for the standard product metric is
-% \[
-%  \bigl(\operatorname{grad}\mathcal J_{\gamma,N}(X)\bigr)_i
-%  =\frac1{N^2}\mathbf P_{x_i}^{\perp}
-%    \sum_{j=1}^N e^{\gamma\ip{x_i}{x_j}}x_j.
-% \]
-% Thus \eqref{eq:spherical-usa} is gradient ascent for the metric
-% \[
-%  g_X^{\mathrm{USA}}(U,V)=\frac1N\sum_{i=1}^N\ip{u_i}{v_i},
-% \]
-% whereas \eqref{eq:spherical-sa} is gradient ascent for the analytic metric
-% \[
-%  g_X^{\mathrm{SA}}(U,V)
-%  =\sum_{i=1}^N\frac{Z_i(X)}{N^2}\ip{u_i}{v_i}.
-% \]
-% Indeed, the corresponding metric gradients multiply the standard
-% product-metric gradient by $N$ and by $N^2/Z_i(X)$, respectively.  Since
-% $\mathcal M$ is compact and $Z_i>0$, both vector fields are smooth and
-% complete.  The {\L}ojasiewicz gradient inequality for analytic functions and
-% analytic Riemannian metrics therefore implies that every trajectory converges
-% to one critical point of $\mathcal J_{\gamma,N}$.
+\begin{proof}
+\textbf{Step 1: global well-posedness.}\quad
+Let $\mathcal M=(\mathbb S^{d-1})^N$ with its product-sphere structure.
+Because $\ip{x_i}{x_j}\in[-1,1]$,
+\[
+ Ne^{-\gamma}\leq Z_i(X)\leq Ne^\gamma,
+ \qquad X\in\mathcal M.
+\]
+Thus the right-hand sides of \eqref{eq:spherical-sa} and
+\eqref{eq:spherical-usa} are smooth tangent vector fields on $\mathcal M$;
+in particular, the denominator in normalized attention never vanishes.
+Every smooth vector field on the compact manifold $\mathcal M$ is complete.
+Hence each initial configuration determines a unique trajectory for all
+$t\in\R$, and in particular for all $t\geq0$.
 
-% It remains to identify which critical points can attract a set of positive
-% volume.  Write the configuration as the column matrix
-% $\mathbf X=[x_1|\cdots|x_N]\in\R^{d\times N}$ and set
-% \[
-%  G=\mathbf X^\top\mathbf X,
-%  \qquad A_{ij}=e^{\gamma G_{ij}},
-%  \qquad D=\operatorname{diag}\bigl((GA)_{11},\ldots,(GA)_{NN}\bigr),
-%  \qquad S=D-A.
-% \]
-% The first-order criticality condition is
-% \begin{equation}\label{eq:spherical-critical-matrix}
-%  \mathbf X S=0.
-% \end{equation}
-% We next show that a critical point whose Riemannian Hessian is negative
-% semidefinite must be a consensus point.  Let
-% $U=[u_1|\cdots|u_N]\in T_X\mathcal M$, so that $\ip{u_i}{x_i}=0$.  Along
-% the product-sphere geodesic with initial velocity $U$, write
-% $G_{ij}(s)=\ip{x_i(s)}{x_j(s)}$.  Then
-% \[
-%  G_{ij}'(0)=\ip{u_i}{x_j}+\ip{x_i}{u_j},
-%  \qquad
-%  G_{ij}''(0)=2\ip{u_i}{u_j}
-%  -\bigl(\abs{u_i}^2+\abs{u_j}^2\bigr)G_{ij}.
-% \]
-% Consequently, direct differentiation gives
-% \begin{align}
-%  N^2\operatorname{Hess}\mathcal J_{\gamma,N}(X)[U,U]
-%  ={}&-\left\langle S,U^\top U\right\rangle_{\mathrm F}\notag\\
-%  &+\frac{\gamma}{2}\sum_{i,j=1}^N A_{ij}
-%  \bigl(\ip{u_i}{x_j}+\ip{x_i}{u_j}\bigr)^2.
-%  \label{eq:spherical-hessian-form}
-% \end{align}
-% The second line is zero when $\gamma=0$.  Negative semidefiniteness of the
-% Hessian therefore implies
-% \begin{equation}\label{eq:spherical-S-positive}
-%  \left\langle S,U^\top U\right\rangle_{\mathrm F}\geq0
-%  \qquad\text{for every }U\in T_X\mathcal M.
-% \end{equation}
+\par\medskip\noindent
+\textbf{Step 2: convergence to one stationary configuration.}\quad
+Define
+\[
+ \varphi_\gamma(s)=
+ \begin{cases}
+  (e^{\gamma s}-1)/\gamma,&\gamma>0,\\
+  s,&\gamma=0.
+ \end{cases}
+\]
+Then, $\mathcal J_{\gamma,N}(X)=(2N^2)^{-1}\sum_{i,j}
+\varphi_\gamma(\ip{x_i}{x_j})$ is real analytic on $\mathcal M$ (recall that a function is real analytic on a manifold if it is locally expressible as a convergent power series in a local coordinate system), and its
+gradient for the standard product metric is
+\[
+ \bigl(\operatorname{grad}\mathcal J_{\gamma,N}(X)\bigr)_i
+ =\frac1{N^2}\mathbf P_{x_i}^{\perp}
+   \sum_{j=1}^N e^{\gamma\ip{x_i}{x_j}}x_j.
+\]
+Thus, 
+\footnote{ 
+  For every $V=(v_1,\ldots,v_N)\in T_X\mathcal M$, \[
+ \dd\mathcal J_{\gamma,N}(X)[V]
+ =\sum_{i=1}^N\ip{\xi_i(X)}{v_i}, \quad \xi_i(X):=\bigl(\operatorname{grad}\mathcal J_{\gamma,N}(X)\bigr)_i.
+\]
+The gradient associated with a Riemannian metric $g$ is characterized by
+\[
+ g_X\bigl(\operatorname{grad}_g\mathcal J_{\gamma,N}(X),V\bigr)
+ =\dd\mathcal J_{\gamma,N}(X)[V]
+ \qquad\text{for every }V\in T_X\mathcal M.
+\]
+Consequently,
+\begin{align*}
+ g_X^{\mathrm{USA}}\bigl((N\xi_i)_i,V\bigr)
+ &=\frac1N\sum_i\ip{N\xi_i}{v_i}
+ =\dd\mathcal J_{\gamma,N}(X)[V],\\
+ g_X^{\mathrm{SA}}
+ \left(\left(\frac{N^2}{Z_i(X)}\xi_i\right)_i,V\right)
+ &=\sum_i\frac{Z_i(X)}{N^2}
+   \ip{\frac{N^2}{Z_i(X)}\xi_i}{v_i}
+ =\dd\mathcal J_{\gamma,N}(X)[V].
+\end{align*}
+Thus the two metric gradients have components $N\xi_i$ and
+$N^2\xi_i/Z_i(X)$, which are exactly the vector fields in
+\eqref{eq:spherical-usa} and \eqref{eq:spherical-sa}, respectively.  The
+bounds on $Z_i$ also show that $g^{\mathrm{SA}}$ is positive definite,
+analytic, and uniformly equivalent to the standard product metric.}
+\eqref{eq:spherical-usa} is gradient ascent for the metric (for $U=(u_1,\ldots,u_N)$ and $V=(v_1,\ldots,v_N)$ in the tangent space)
+\[
+ g_X^{\mathrm{USA}}(U,V)=\frac1N\sum_{i=1}^N\ip{u_i}{v_i},
+\]
+whereas \eqref{eq:spherical-sa} is gradient ascent for the analytic metric
+\[
+ g_X^{\mathrm{SA}}(U,V)
+ =\sum_{i=1}^N\frac{Z_i(X)}{N^2}\ip{u_i}{v_i}.
+\]
+ 
 
-% To exploit \eqref{eq:spherical-S-positive}, let
-% $\zeta\sim\mathcal N(0,I_d)$ and choose the common-direction tangent
-% perturbation $u_i=(I-x_ix_i^\top)\zeta$.  Since
-% \[
-%  \E\ip{u_i}{u_j}
-%  =\operatorname{tr}\bigl((I-x_ix_i^\top)(I-x_jx_j^\top)\bigr)
-%  =d-2+G_{ij}^2,
-% \]
-% taking expectations in \eqref{eq:spherical-S-positive} yields
-% \[
-%  0\leq\left\langle
-%  S,(d-2)\one\one^\top+G^{\odot2}\right\rangle_{\mathrm F}.
-% \]
-% The identity
-% \[
-%  (d-2)\one\one^\top+G^{\odot2}
-%  =(d-3)\one\one^\top+(\one\one^\top-G)^{\odot2}+2G
-% \]
-% and \eqref{eq:spherical-critical-matrix} give
-% $\langle S,G\rangle_{\mathrm F}=0$.  Moreover,
-% \[
-%  \left\langle S,\one\one^\top\right\rangle_{\mathrm F}
-%  =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})\leq0,
-% \]
-% and, because $(\one\one^\top-G)^{\odot2}$ has zero diagonal,
-% \[
-%  \left\langle S,(\one\one^\top-G)^{\odot2}\right\rangle_{\mathrm F}
-%  =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2.
-% \]
-% Since $d\geq3$, we conclude that
-% \[
-%  0\leq(d-3)\left\langle S,\one\one^\top\right\rangle_{\mathrm F}
-%  -\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2\leq0.
-% \]
-% Every $A_{ij}$ is strictly positive, hence $G_{ij}=1$ for all $i,j$, which
-% means $x_1=\cdots=x_N$.  Thus every non-consensus critical point has a
-% strictly positive Hessian direction: it is a strict saddle for gradient
-% ascent.  This conclusion is independent of which of the two positive-definite
-% metrics above is used.  At a critical point, the Hessian quadratic form is the
-% second differential of the energy, and multiplication by a positive mobility
-% preserves the existence of an unstable direction.
+The local {\L}ojasiewicz gradient inequality makes the convergence
+argument precise.  If $f$ is real analytic on a real-analytic Riemannian
+manifold $(\mathcal M,g)$ and $X_*$ is a critical point of $f$, then there
+exist a neighborhood $\mathcal U$ of $X_*$, $C>0$, and
+$\vartheta\in(0,1/2]$ such that
+\begin{equation}\label{eq:lojasiewicz-gradient}
+ \abs{f(X)-f(X_*)}^{1-\vartheta}
+ \leq C\norm{\operatorname{grad}_g f(X)}_{g,X},
+ \qquad X\in\mathcal U.
+\end{equation}
+It is a local inequality near a critical point; unlike the
+Polyak--{\L}ojasiewicz inequality, it neither requires a global minimizer nor
+a uniform quadratic exponent.  We apply it with
+$f=\mathcal J_{\gamma,N}$ and with the relevant metric above.  Along either
+gradient-ascent flow,
+\[
+ \frac{\dd}{\dd t}\mathcal J_{\gamma,N}(X_t)
+ =\norm{\operatorname{grad}_g\mathcal J_{\gamma,N}(X_t)}_{g,X_t}^2.
+\]
+The energy is bounded above on compact $\mathcal M$, so it converges to some
+$\mathcal J_\infty$, and
+\[
+ \int_0^\infty
+ \norm{\operatorname{grad}_g\mathcal J_{\gamma,N}(X_t)}_{g,X_t}^2\,\dd t
+ =\mathcal J_\infty-\mathcal J_{\gamma,N}(X_0)<\infty.
+\]
+Smoothness on the compact manifold makes the squared gradient norm uniformly
+continuous along the trajectory; hence it tends to zero.  Compactness then
+provides an accumulation point $X_*$ with
+$\operatorname{grad}_g\mathcal J_{\gamma,N}(X_*)=0$ and
+$\mathcal J_{\gamma,N}(X_*)=\mathcal J_\infty$.
 
-% Finally, the center-stable manifold theorem, in its standard avoidance form
-% for gradient flows, implies that the set of initial conditions whose limiting
-% critical point has a strictly positive Hessian direction has zero
-% product-sphere volume.  Hence, for almost every initial condition, the limit
-% established above has negative semidefinite Hessian and therefore, by the
-% landscape calculation, is a consensus point
-% $(x_\infty,\ldots,x_\infty)$.  This proves the claim.  The dynamical reduction
-% and the direct landscape calculation are given in
-% \cite[Theorem~1 and Appendix~C]{CriscitielloEtAl2026Synchronization}.
-% \end{proof}
+The key point is that \eqref{eq:lojasiewicz-gradient} upgrades convergence of
+the energy to convergence of the configuration.  Set
+$E(t)=\mathcal J_\infty-\mathcal J_{\gamma,N}(X_t)$.  On any time interval
+for which $X_t\in\mathcal U$,
+\[
+ -\frac{\dd}{\dd t}E(t)^\vartheta
+ =\vartheta E(t)^{\vartheta-1}
+   \norm{\operatorname{grad}_g\mathcal J_{\gamma,N}(X_t)}_{g,X_t}^2
+ \geq \frac{\vartheta}{C}
+   \norm{\operatorname{grad}_g\mathcal J_{\gamma,N}(X_t)}_{g,X_t}.
+\]
+Choose a sufficiently late visit of $X_t$ to a smaller neighborhood of
+$X_*$ so that $(C/\vartheta)E(t)^\vartheta$ is shorter than the distance to
+$\partial\mathcal U$.  Integrating the last inequality shows that the
+trajectory cannot exit $\mathcal U$ and that
+\[
+ \int_t^\infty\norm{\dot X_s}_{g,X_s}\,\dd s
+ \leq \frac{C}{\vartheta}E(t)^\vartheta<\infty.
+\]
+Thus the remaining trajectory has finite length and is Cauchy.  Completeness
+of the compact manifold implies $X_t\to X_*$.  This is the precise reason
+that every trajectory converges to one critical point rather than merely
+having a convergent energy.
+
+\par\medskip\noindent
+\textbf{Step 3: the generic stationary point is a consensus point.}\quad
+It remains to identify which critical points can attract a set of positive
+volume.  Write the configuration as the column matrix
+$\mathbf X=[x_1|\cdots|x_N]\in\R^{d\times N}$ and set
+\[
+ G=\mathbf X^\top\mathbf X,
+ \qquad A_{ij}=e^{\gamma G_{ij}},
+ \qquad D=\operatorname{diag}\bigl((GA)_{11},\ldots,(GA)_{NN}\bigr),
+ \qquad S=D-A.
+\]
+The first-order criticality condition is
+\begin{equation}\label{eq:spherical-critical-matrix}
+ \mathbf X S=0.
+\end{equation}
+We next show that a critical point whose Riemannian Hessian is negative
+semidefinite must be a consensus point.  Let
+$U=[u_1|\cdots|u_N]\in T_X\mathcal M$, so that $\ip{u_i}{x_i}=0$.  Along
+the product-sphere geodesic with initial velocity $U$, write
+$G_{ij}(s)=\ip{x_i(s)}{x_j(s)}$.
+The product metric has componentwise geodesics.  Set
+$r_i=\abs{u_i}$ and
+$\operatorname{sinc}(z)=\sin(z)/z$ for $z\neq0$, with
+$\operatorname{sinc}(0)=1$.  The geodesic in the $i$th sphere factor is the
+great circle
+\[
+ x_i(s)=\cos(sr_i)x_i+s\operatorname{sinc}(sr_i)u_i.
+\]
+It starts from $x_i$ with velocity $u_i$, and direct differentiation gives
+\[
+ x_i'(0)=u_i,
+ \qquad x_i''(0)=-\abs{u_i}^2x_i.
+\]
+The convention for $\operatorname{sinc}(0)$ also covers $u_i=0$, in which
+case this sphere component is constant.  Applying the product rule once and
+twice to $G_{ij}(s)$ gives
+\[
+ G_{ij}'(0)=\ip{u_i}{x_j}+\ip{x_i}{u_j},
+ \qquad
+ G_{ij}''(0)=2\ip{u_i}{u_j}
+ -\bigl(\abs{u_i}^2+\abs{u_j}^2\bigr)G_{ij}.
+\]
+Moreover, since
+$\varphi_\gamma'(G_{ij})=A_{ij}$ and
+$\varphi_\gamma''(G_{ij})=\gamma A_{ij}$, the chain rule yields
+\[
+ N^2\operatorname{Hess}\mathcal J_{\gamma,N}(X)[U,U]
+ =\frac12\sum_{i,j=1}^N A_{ij}
+ \left[G_{ij}''(0)+\gamma\bigl(G_{ij}'(0)\bigr)^2\right].
+\]
+By symmetry of $A$ and $G$, the terms containing $G_{ij}''(0)$ satisfy
+\[
+ \frac12\sum_{i,j=1}^N A_{ij}G_{ij}''(0)
+ =\left\langle A,U^\top U\right\rangle_{\mathrm F}
+  -\sum_{i=1}^N\abs{u_i}^2\sum_{j=1}^NA_{ij}G_{ij}
+ =-\left\langle S,U^\top U\right\rangle_{\mathrm F}.
+\]
+Consequently,
+\begin{align}
+ N^2\operatorname{Hess}\mathcal J_{\gamma,N}(X)[U,U]
+ ={}&-\left\langle S,U^\top U\right\rangle_{\mathrm F}\notag\\
+ &+\frac{\gamma}{2}\sum_{i,j=1}^N A_{ij}
+ \bigl(\ip{u_i}{x_j}+\ip{x_i}{u_j}\bigr)^2.
+ \label{eq:spherical-hessian-form}
+\end{align}
+The second line is zero when $\gamma=0$.  Negative semidefiniteness of the
+Hessian therefore implies
+\begin{equation}\label{eq:spherical-S-positive}
+ \left\langle S,U^\top U\right\rangle_{\mathrm F}\geq0
+ \qquad\text{for every }U\in T_X\mathcal M.
+\end{equation}
+
+To exploit \eqref{eq:spherical-S-positive}, let
+$\zeta\sim\mathcal N(0,I_d)$ and choose the common-direction tangent
+perturbation $u_i=(I-x_ix_i^\top)\zeta$.  Since
+\[
+ \E\ip{u_i}{u_j}
+ =\operatorname{tr}\bigl((I-x_ix_i^\top)(I-x_jx_j^\top)\bigr)
+ =d-2+G_{ij}^2,
+\]
+taking expectations in \eqref{eq:spherical-S-positive} yields
+\[
+ 0\leq\left\langle
+ S,(d-2)\one\one^\top+G^{\odot2}\right\rangle_{\mathrm F}.
+\]
+The identity
+\[
+ (d-2)\one\one^\top+G^{\odot2}
+ =(d-3)\one\one^\top+(\one\one^\top-G)^{\odot2}+2G
+\]
+and \eqref{eq:spherical-critical-matrix} give
+$\langle S,G\rangle_{\mathrm F}=0$.  Moreover,
+\[
+ \left\langle S,\one\one^\top\right\rangle_{\mathrm F}
+ =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})\leq0,
+\]
+and, because $(\one\one^\top-G)^{\odot2}$ has zero diagonal,
+\[
+ \left\langle S,(\one\one^\top-G)^{\odot2}\right\rangle_{\mathrm F}
+ =-\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2.
+\]
+Since $d\geq3$, we conclude that
+\[
+ 0\leq(d-3)\left\langle S,\one\one^\top\right\rangle_{\mathrm F}
+ -\sum_{i,j=1}^N A_{ij}(1-G_{ij})^2\leq0.
+\]
+Every $A_{ij}$ is strictly positive, hence $G_{ij}=1$ for all $i,j$, which
+means $x_1=\cdots=x_N$.
+Thus every non-consensus critical point has a strictly positive Hessian
+direction and is unstable for gradient ascent.  This statement is independent
+of which of the two positive-definite metrics is used.  Indeed, at a critical
+point the Hessian quadratic form is the metric-independent second differential.
+For either metric $g$, define the self-adjoint linearization $L_Y$ at a
+critical point $Y$ by
+\[
+ g_Y(L_YU,V)
+ =\operatorname{Hess}\mathcal J_{\gamma,N}(Y)[U,V].
+\]
+A positive Hessian direction gives a positive Rayleigh quotient for $L_Y$,
+and hence a positive eigenvalue: this is the required unstable direction.
+
+It remains to show carefully why these unstable critical points are
+reached only from a null set.  Let $\Phi_t$ denote either gradient-ascent flow
+and let $\mathcal S$ be the set of non-consensus critical points.  For each
+$Y\in\mathcal S$, the local center-stable manifold theorem provides a
+neighborhood $B_Y$ and an embedded manifold
+$W_Y^{\mathrm{cs}}\subset B_Y$ of codimension at least one such that every
+orbit which remains in $B_Y$ for all future time lies in
+$W_Y^{\mathrm{cs}}$.  Since $\mathcal M$ is second countable, the cover
+$\{B_Y:Y\in\mathcal S\}$ has a countable subcover
+$\{B_{Y_k}\}_{k\geq1}$.
+
+Suppose that $\Phi_t(X_0)$ converges to a point of $\mathcal S$.  For some
+$k$ and some integer $m\geq0$, the orbit remains in $B_{Y_k}$ for every
+$t\geq m$; therefore
+\[
+ X_0\in\Phi_{-m}\bigl(W_{Y_k}^{\mathrm{cs}}\bigr).
+\]
+Step~1 gives completeness in both time directions, so each $\Phi_m$ is a
+diffeomorphism.  The positive-codimension manifold $W_{Y_k}^{\mathrm{cs}}$ has
+zero product Riemannian volume, and its image under a diffeomorphism does as
+well.  Hence the basin of all non-consensus critical points is contained in
+the null set
+\[
+ \bigcup_{k=1}^\infty\bigcup_{m=0}^\infty
+ \Phi_{-m}\bigl(W_{Y_k}^{\mathrm{cs}}\bigr).
+\]
+Consequently, for almost every initial condition the limiting critical point
+is a consensus configuration $(x_\infty,\ldots,x_\infty)$.  This proves the
+claim.  The center-stable reduction and the direct landscape calculation are
+given in
+\cite[Theorem~1 and Appendix~C]{CriscitielloEtAl2026Synchronization}.
+\end{proof}
 
 
 \begin{example}[Two tokens: the complete calculation]
@@ -4622,20 +4779,10 @@ Therefore
 \end{equation}
 Since $\abs{x_1-x_2}^2=2(1-c)$, the two tokens synchronize exponentially.
 The antipodal configuration $c(0)=-1$ is stationary and illustrates exactly
-the exceptional saddle excluded by Theorem~\ref{thm:spherical-attention-clustering}.
+the exceptional unstable critical point excluded by
+Theorem~\ref{thm:spherical-attention-clustering}.
 \end{example}
 
-TBV: Three refinements explain why this elementary conclusion is not the whole
-story.  Multi-cluster states can persist for exponentially long low-temperature
-times before merging \cite{GeshkovskiEtAl2024Metastability}; causal masking
-destroys the mean-field gradient structure but can still lead to one-cluster
-convergence \cite{KaragodinEtAl2024Causal}; and, at the PDE level, quantitative
-exponential convergence to a Dirac mass is known only under stated regularity,
-nondegeneracy, and parameter regimes
-\cite{ChenEtAl2026Quantitative,Rigollet2026MeanField}.  These are results for
-idealized tied-parameter flows.  They do not by themselves establish collapse
-for a finite-depth trained Transformer with untied blocks, MLPs, residual
-channels, or multiple heads.
 
 
 
@@ -4681,19 +4828,6 @@ not the conclusion: contraction of the convex hull is easy, strict consensus
 requires persistent communication, and multiple clusters or metastable states
 appear when that communication degenerates.  This is exactly the distinction
 between useful representation formation and indiscriminate token collapse.
-
-\subsection{Connections forward}
-Consensus is an attractive gradient flow and hence links directly to the
-energy-dissipation viewpoint of Section~\ref{sec:gradient-flow}.  In generative modeling, excessive
-attraction resembles mode collapse, while diffusion or repulsion maintains
-diversity.  In in-context learning, clusters can represent posterior mass on
-different latent tasks, but averaging incompatible task predictions creates
-bias.  For inverse problems, metastable trajectories explore only part of state
-space and can make interaction laws outside the visited clusters
-unidentifiable.  Architecturally, head diversity, repulsive heads, gating,
-normalization, and doubly-stochastic constraints are mechanisms for positioning
-the network between uncontrolled fragmentation and one-cluster collapse.
-
 
 
 \section{Stability and propagation of perturbations}\label{sec:stability}
@@ -6150,6 +6284,46 @@ E.~Hairer and C.~Lubich,
 in N.~J.~Higham et al. (eds.), \emph{The Princeton Companion to Applied Mathematics},
 Princeton University Press, 2015, pp.~293--305.
 \href{https://www.unige.ch/~hairer/preprints/pcam-ode.pdf}{Author's manuscript}.
+
+\bibitem{BaiKolterKoltun2019DEQ}
+S.~Bai, J.~Z.~Kolter, and V.~Koltun,
+\emph{Deep equilibrium models},
+Advances in Neural Information Processing Systems \textbf{32} (2019).
+\href{https://papers.nips.cc/paper_files/paper/2019/hash/01386bd6d8e091c2ab4c7c7de644d37b-Abstract.html}
+{NeurIPS proceedings}.
+
+\bibitem{BaiKoltunKolter2021Jacobian}
+S.~Bai, V.~Koltun, and J.~Z.~Kolter,
+\emph{Stabilizing equilibrium models by Jacobian regularization},
+Proceedings of the 38th International Conference on Machine Learning,
+PMLR \textbf{139} (2021), 554--565.
+\href{https://proceedings.mlr.press/v139/bai21b.html}{PMLR proceedings}.
+
+\bibitem{JiangEtAl2026ELM}
+Y.~Jiang, H.~Wang, T.~Ding, W.~Zhang, Y.~Wu, H.~Zhao, and J.~C.~S.~Lui,
+\emph{Equilibrium language models},
+International Conference on Learning Representations, 2026.
+\href{https://proceedings.iclr.cc/paper_files/paper/2026/hash/6041ba59d44d7d1c150334b8bb02497c-Abstract-Conference.html}
+{ICLR proceedings}.
+
+\bibitem{KitaevKaiserLevskaya2020Reformer}
+N.~Kitaev, \L.~Kaiser, and A.~Levskaya,
+\emph{Reformer: The efficient Transformer},
+International Conference on Learning Representations, 2020.
+\href{https://arxiv.org/abs/2001.04451}{arXiv:2001.04451}.
+
+\bibitem{SeraphimEtAl2024SPDTransformer}
+M.~Seraphim, A.~Lechervy, F.~Yger, L.~Brun, and O.~Etard,
+\emph{Structure-preserving Transformers for sequences of SPD matrices},
+32nd European Signal Processing Conference (EUSIPCO), 2024, pp.~1451--1455.
+\href{https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0001451.pdf}
+{Conference proceedings}.
+
+\bibitem{NewhouseEtAl2025LipschitzTransformers}
+L.~Newhouse, R.~P.~Hess, F.~Cesista, A.~Zahorodnii, J.~Bernstein, and P.~Isola,
+\emph{Training Transformers with enforced Lipschitz constants},
+preprint, 2025.
+\href{https://arxiv.org/abs/2507.13338}{arXiv:2507.13338}.
 
 \end{thebibliography}
 
