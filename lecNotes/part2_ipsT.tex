@@ -1877,7 +1877,7 @@ full characterization are proved in
 \end{proof}
 
 %%% 
-\subsection{Potential interactions: one gradient flow at two scales}
+\subsection{Potential interactions: one gradient flow at two scales}\label{sec:potential-interactions}
 
 We now identify the additional structure that turns a general IPS into
 a gradient flow.  Let $U,W\in C^2(\R^d)$ and suppose that $W$ is even:
@@ -4132,7 +4132,7 @@ Then, the projected equation \eqref{eq:projected-velocity} gives
  +(1-\alpha)\sum_j\widetilde a_{ij}(z_j-z_i),
  \qquad \overline z=\frac1N\sum_j z_j.
 \end{equation}
- Now, for each $i$ such that $z_i=M_u(t)$, every $z_j-M_u\leq0$, so
+ Now, for each $i$ such that $z_i=M_u(t)$, every $z_j-M_u\leq0$ (denote the set of such indices as $I_M(t)$), so
 \[
  \dot z_i
  =\alpha(\overline z-M_u)
@@ -4140,7 +4140,7 @@ Then, the projected equation \eqref{eq:projected-velocity} gives
  \leq\alpha(\overline z-M_u),
 \]
 because every summand in the remainder is nonpositive.  For each
-$i$ such that $z_i=m_u(t)$, the same calculation, with every $z_j-m_u\geq0$, gives
+$i$ such that $z_i=m_u(t)$ (denote the set of such indices as $I_m(t)$), the same calculation, with every $z_j-m_u\geq0$, gives
 $\dot z_i\geq\alpha(\overline z-m_u)$.  Taking the maximum over $I_M(t)$ and
 the minimum over $I_m(t)$ therefore gives
 \[
@@ -4477,7 +4477,7 @@ Because $\ip{x_i}{x_j}\in[-1,1]$,
 Thus the right-hand sides of \eqref{eq:spherical-sa} and
 \eqref{eq:spherical-usa} are smooth tangent vector fields on $\mathcal M$;
 in particular, the denominator in normalized attention never vanishes.
-Every smooth vector field on the compact manifold $\mathcal M$ is complete.
+Every smooth vector field on the compact manifold $\mathcal M$ generates a flow that is defined for all time. 
 Hence each initial configuration determines a unique trajectory for all
 $t\in\R$, and in particular for all $t\geq0$.
 
@@ -4752,13 +4752,15 @@ given in
 \begin{example}[Two tokens: the complete calculation]
 \label{ex:two-token-spherical-attention}
 Take $N=2$ in \eqref{eq:spherical-sa} and set
-$c(t)=\ip{x_1(t)}{x_2(t)}$.  Since the projected self-interaction vanishes,
+$c(t)=\ip{x_1(t)}{x_2(t)}$.  Since the projected self-interaction vanishes and
+$ \ip{x_1}{x_2} = x_2-c x_1 $, we have 
 \[
  \dot x_1=a_\gamma(c)(x_2-cx_1),\qquad
  \dot x_2=a_\gamma(c)(x_1-cx_2),
  \qquad
  a_\gamma(c)=\frac1{1+e^{\gamma(1-c)}}.
 \]
+
 Taking the derivative of the inner product gives the closed scalar equation
 \begin{equation}\label{eq:two-token-correlation}
  \dot c(t)= \ip{\dot x_1}{x_2} + \ip{x_1}{\dot x_2}
@@ -4837,10 +4839,10 @@ How does an error in tokens or interaction kernels propagate through depth?
 \subsection{Wasserstein stability under model discrepancy}\label{sec:w1-stability}
 Let $\mu_t$ and $\nu_t$ solve continuity equations driven by fields $\Phi$ and
 $\Psi$:
-\[
+\begin{equation}\label{eq:mu-nu}
  \partial_t\mu_t+\diver(\mu_t\Phi_t[\mu_t])=0,\qquad
  \partial_t\nu_t+\diver(\nu_t\Psi_t[\nu_t])=0.
-\]
+\end{equation}
 Differences can enter through the initial tokens, the interaction law, the
 layer parameters, numerical discretization, or finite-particle sampling.  A
 useful bound should keep these sources separate.
@@ -4882,18 +4884,23 @@ $(X_0,Y_0)$.  Evolve it by
  \dot X_t=\Phi_t[\mu_t](X_t),\qquad
  \dot Y_t=\Psi_t[\nu_t](Y_t).
 \]
-Its law at time $t$ is a coupling of $\mu_t$ and $\nu_t$.
-Set $D_t=X_t-Y_t$.  Since $D_t$ is absolutely continuous, at times
+Its law at time $t$ is a coupling of $\mu_t$ and $\nu_t$, so $W_1(\mu_t,\nu_t)\leq\E\abs{X_t-Y_t}$. 
+Set $D_t=X_t-Y_t$.  At times
 when $D_t\ne0$,
 $\frac{\dd}{\dd t}(|D_t|^2)^{1/2}= \langle D_t/|D_t|,\dot D_t\rangle
-\leq|\dot D_t|$; the corresponding upper-derivative inequality holds when
-$D_t=0$.  Integrating this pathwise inequality and then using Fubini gives the
+\leq|\dot D_t|$; more generally, the norm of an absolutely continuous
+curve is absolutely continuous and satisfies
+$\frac{\dd}{\dd t}|D_t|\leq|\dot D_t|$ almost everywhere, including on its
+zero set.  Integrating this pathwise inequality and then using Fubini gives the
 first line below.  For the second line, use the decomposition
-\[
-\Phi_t[\mu_t](X_t)-\Psi_t[\nu_t](Y_t)
- =\bigl(\Phi_t[\mu_t](X_t)-\Phi_t[\nu_t](Y_t)\bigr)
-  +\bigl(\Phi_t[\nu_t](Y_t)-\Psi_t[\nu_t](Y_t)\bigr).
-\]
+\begin{equation}\label{eq:Phi-Psi}
+  \begin{aligned}
+   \E| \Phi_t[\mu_t](X_t)-\Psi_t[\nu_t](Y_t) |
+   & \leq \E |\bigl(\Phi_t[\mu_t](X_t)-\Phi_t[\nu_t](Y_t)\bigr)|
+      +\E |\bigl(\Phi_t[\nu_t](Y_t)-\Psi_t[\nu_t](Y_t)\bigr)|  \\
+   & \leq L_x\E |X_t-Y_t|+L_\mu W_1(\mu_t,\nu_t)+\varepsilon.
+  \end{aligned}
+\end{equation}
 Assumption~\ref{ass:stability} bounds the two terms by
 $L_x|D_t|+L_\mu W_1(\mu_t,\nu_t)$ and $\varepsilon$, respectively.
 \begin{align*}
@@ -4911,52 +4918,51 @@ $W_1(\mu_t,\nu_t)\leq\E\abs{X_t-Y_t}$ and $\E\abs{X_0-Y_0}=W_1(\mu_0,\nu_0)$.
 
 
 
-\begin{remark} \textbf{Replacing uniform field error by a trajectory
-$L^2$ error}
+\begin{remark} \textbf{Replacing uniform error by a trajectory
+$L^2$ error.}  
 A squared-loss learning problem does not usually control the supremum in
-\eqref{eq:field-discrepancy}. Suppose that the discrepancy is evaluated
-at the process $Y_t\sim\nu_t$.  Set
-\[
- e_t^\eta(x):=\Phi_t[\eta](x)-\Psi_t[\eta](x),
- \qquad
- \varepsilon_{2,\nu}(t)
- :=\left(\int_{\R^d}\abs{e_t^{\nu_t}(x)}^2\,\nu_t(\dd x)\right)^{1/2}.
-\] 
-In the preceding proof, Cauchy--Schwarz replaces the uniform
-estimate by
-\[
- \E\abs{e_t^{\nu_t}(Y_t)}\leq\varepsilon_{2,\nu}(t),
-\]
-and the time-dependent Gronwall inequality gives
+\eqref{eq:field-discrepancy}, but instead controls the $L^2$ norm of the discrepancy along the true process $Y_t\sim\nu_t$ (which is often the data distribution). That is, 
+with 
+\[ e_t^\eta(x):=\Phi_t[\eta](x)-\Psi_t[\eta](x), \]
+the L2 error along the process $Y_t$ 
+\begin{equation}\label{eq:trajectory-L2-error}
+\varepsilon_{2,\nu}(t): = \left(\E\abs{e_t^{\nu_t}(Y_t)}^2\right)^{1/2}= \left(\int_{\R^d}\abs{e_t^{\nu_t}(x)}^2\,\nu_t(\dd x)\right)^{1/2}
+\end{equation}
+is bounded. 
+In this case, if $\mu_0,\nu_0\in\cP_p(\R^d)$ for $p\in \{1,2\}$, we have 
+\begin{equation}\label{eq:stability-space-time-L2}
+ W_p(\mu_t,\nu_t)
+ \leq e^{Lt}W_p(\mu_0,\nu_0)
+ +\left(\frac{e^{2Lt}-1}{2L}\right)^{1/2}
+(\int_0^{\blue{t}}\varepsilon_{2,\nu}(s)^2\,\dd s)^{1/2}.
+\end{equation}
+where the factor is interpreted as $\sqrt t$ when $L=0$. In fact, for $p=1$, it follows directly from the proof of Theorem~\ref{thm:w1-stability}: we apply Cauchy--Schwarz to the second term in  \eqref{eq:Phi-Psi} to replace $\varepsilon$  by $\varepsilon_{2,\nu}(t)$, and apply the time-dependent Gronwall inequality as before to obtain:
 \begin{equation}\label{eq:stability-occupation-L2}
  W_1(\mu_t,\nu_t)
  \leq e^{Lt}W_1(\mu_0,\nu_0)
  +\int_0^t e^{L(t-s)}\varepsilon_{2,\nu}(s)\,\dd s.
 \end{equation}
-The natural space--time norm is induced by the occupation measure
-\[
- \Lambda_{\nu,T}(\dd s,\dd x):=\nu_s(\dd x)\,\dd s,
- \qquad
- \norm{e}_{L^2(\Lambda_{\nu,T})}^2
- :=\int_0^T\int_{\R^d}\abs{e_s^{\nu_s}(x)}^2
- \nu_s(\dd x)\,\dd s.
-\]
-A second application of Cauchy--Schwarz to
-\eqref{eq:stability-occupation-L2} yields, for $t\leq T$,
-\begin{equation}\label{eq:stability-space-time-L2}
- W_1(\mu_t,\nu_t)
- \leq e^{Lt}W_1(\mu_0,\nu_0)
- +\left(\frac{e^{2Lt}-1}{2L}\right)^{1/2}
-  \norm{e}_{L^2(\Lambda_{\nu,t})},
-\end{equation}
-where the factor is interpreted as $\sqrt t$ when $L=0$.  If
-$\mu_0,\nu_0\in\cP_2(\R^d)$, the same formula holds with $W_2$ in place of
+A second application of Cauchy--Schwarz to the integral yields \eqref{eq:stability-space-time-L2}. 
+
+
+
+If $\mu_0,\nu_0\in\cP_2(\R^d)$, the same formula holds with $W_2$ in place of
 $W_1$: starting from a $W_2$-optimal coupling and setting
 $R_t=(\E\abs{X_t-Y_t}^2)^{1/2}$ gives
-$R_t'\leq LR_t+\varepsilon_{2,\nu}(t)$.
+\[
+ \frac12\frac{\dd}{\dd t}R_t^2
+ \leq L_xR_t^2+L_\mu W_1(\mu_t,\nu_t)R_t
+       +\varepsilon_{2,\nu}(t)R_t
+ \leq LR_t^2+\varepsilon_{2,\nu}(t)R_t.
+\]
+Here Cauchy--Schwarz bounds the discrepancy term, and
+$W_1(\mu_t,\nu_t)\leq W_2(\mu_t,\nu_t)\leq R_t$.
+Consequently $R_t'\leq LR_t+\varepsilon_{2,\nu}(t)$; at zeros of $R_t$,
+regularize by $(R_t^2+\delta^2)^{1/2}$ and let $\delta\downarrow0$.
+The same time-dependent Gronwall and Cauchy--Schwarz arguments give
+\eqref{eq:stability-space-time-L2} for $p=2$.
 
-Statistical learning usually supplies an $L^2$ error under a training design
-$\rho_t^{\mathrm{tr}}$, not automatically under the rollout law.  If
+When the training data are distributed according to $\rho_t^{\mathrm{tr}}$ instead of the true distribution $\nu_t$, the error is controlled by the $L^2$ norm of the discrepancy under this measure. That is, if
 $\nu_t\ll\rho_t^{\mathrm{tr}}$, then
 \[
  \varepsilon_{2,\nu}(t)
@@ -4964,19 +4970,14 @@ $\nu_t\ll\rho_t^{\mathrm{tr}}$, then
  \norm{e_t^{\nu_t}}_{L^2(\rho_t^{\mathrm{tr}})}.
 \]
 This is the required state-space coverage, or distribution-shift, condition.
-If training data follow $\mu_t$ rather than $\nu_t$, one can obtain the
-analogous bound with the occupation measure of $\mu$ by splitting the fields
-at $\Psi_t[\mu_t](X_t)$ and assuming the Lipschitz estimate for $\Psi$.
-
-For uniform over a class $\mathcal A_t$ of all measures that can be visited, one may instead assume
-\[
- \sup_{\eta\in\mathcal A_t}
- \norm{e_t^\eta}_{L^2(\eta)}\leq\varepsilon_2(t), 
-\]
- then proceed as above with $\varepsilon_{2,\nu}(t)\leq\varepsilon_2(t)$.
+Both norms evaluate the field at the same measure input $\nu_t$.
+Training on different contexts also requires control of the change in that
+measure input.  Moreover, an empirical training measure does not usually
+dominate a continuous population law; a population generalization bound,
+not merely small empirical loss, is needed in that case.
 \end{remark}
 
-\paragraph{\textbf{The finite-depth version}}
+\subsection{The finite-depth version}
 For practical networks it is often better not to pass to continuous depth.
 For step sizes $h_\ell\geq0$, let
 \[
@@ -5051,7 +5052,7 @@ $h_m\varepsilon_m$ proves it for $m+1$.  Taking $m=L$ gives
 
 
 %%%%%%%%%%%
-\paragraph{\textbf{Contractivity from one-sided dissipation}}
+\subsection{Contractivity from one-sided dissipation}
 Global Lipschitz estimates permit exponential growth even when the true
 dynamics is contracting.  A one-sided condition captures dissipation.
 
@@ -5062,15 +5063,14 @@ Suppose, for some $\kappa>L_\mu\geq0$,
  \leq-\kappa\abs{x-y}^2
       +L_\mu W_2(\mu,\nu)\abs{x-y}.
 \end{equation}
-Let $\mu_0,\nu_0\in\cP_2(\R^d)$.
-If $\Phi$ is replaced by a field $\Psi$ with uniform error $\varepsilon$, then
+Let $\mu_0,\nu_0\in\cP_2(\R^d)$ for the systems \eqref{eq:mu-nu}. If in addition that \eqref{eq:field-discrepancy} holds, i.e., $\sup_{y\in\R^d}|\Phi[\nu](y)-\Psi[\nu](y)|\leq\varepsilon$ for all $\nu_t$, then
 \begin{equation}\label{eq:contractive-stability}
  W_2(\mu_t,\nu_t)
  \leq e^{-(\kappa-L_\mu)t}W_2(\mu_0,\nu_0)
  +\frac{1-e^{-(\kappa-L_\mu)t}}{\kappa-L_\mu}\varepsilon.
 \end{equation}
 The same estimate holds for diffusions driven by identical additive Brownian
-noise.
+noise. 
 \end{proposition}
 \begin{proof}
 Choose an optimal initial coupling and evolve it synchronously according to
@@ -5118,101 +5118,240 @@ For additive diffusions driven by the same Brownian motion, the stochastic
 increments cancel in $X_t-Y_t$, so the identical calculation applies.
 \end{proof}
 In the contractive regime, model error produces a bounded error floor rather
-than exponential accumulation.  This is why monotonicity, spectral
-normalization, or a provable Lyapunov structure can be more informative than a
-small parameter norm.
+than exponential accumulation. 
 
-\subsection{Finite particles and the high-dimensional obstruction}
-For deterministic dynamics, the empirical measure of the $N$-particle system
-is itself a weak solution of the nonlinear continuity equation.  Taking
-$\nu_0=\mu_0^N$, $\Phi=\Psi$, and applying
-Theorem~\ref{thm:w1-stability} gives
-\begin{equation}\label{eq:empirical-from-initial}
- W_1(\mu_t,\mu_t^N)\leq e^{Lt}W_1(\mu_0,\mu_0^N).
+\begin{exercise}[Trajectory $L^2$ perturbation bounds]\label{ex:contractive-trajectory-L2}
+Under the one-sided condition \eqref{eq:one-sided}, replace the uniform
+field-error assumption by
+$\varepsilon_{2,\nu}\in L^2(0,T)$, with the root-mean-square error defined in
+\eqref{eq:trajectory-L2-error}.  Write $\alpha=\kappa-L_\mu>0$.
+Prove the convolution estimate
+\begin{equation}\label{eq:contractive-trajectory-L2}
+ W_2(\mu_t,\nu_t)
+ \leq e^{-\alpha t}W_2(\mu_0,\nu_0)
+       +\int_0^t e^{-\alpha(t-s)}\varepsilon_{2,\nu}(s)\,\dd s,
 \end{equation}
-Thus concentration or quantization at the input propagates through finite
-time.  For stochastic particles, the martingale in
-\eqref{eq:empirical-weak} adds a dynamical fluctuation term.
-
-There is no universal $N^{-1/2}$ rate for
-$W_1(\mu_0,\mu_0^N)$ in high ambient dimension.  Without additional structure,
-estimating a full $d$-dimensional distribution suffers a curse of
-dimensionality.  Better rates require intrinsic low-dimensional support,
-concentration of selected observables, a weaker metric, or special structure
-of the attention field.  This is a central warning when importing classical
-low-dimensional PDE estimates into embeddings with thousands of coordinates.
-
-
-\begin{exercise}[Sampling dimension]
-Set $\nu_0=\mu_0^N$ and $\Phi=\Psi$.  Explain how a bound on
-$\E W_1(\mu_0,\mu_0^N)$ becomes a finite-particle approximation bound.  Compare
-the cases where $\mu_0$ is supported on a curve and where it has a density on a
-high-dimensional cube.
+and deduce
+\begin{equation}\label{eq:contractive-space-time-L2}
+ W_2(\mu_t,\nu_t)
+ \leq e^{-\alpha t}W_2(\mu_0,\nu_0)
+ +\left(\frac{1-e^{-2\alpha t}}{2\alpha}\right)^{1/2}
+   \left(\int_0^t\varepsilon_{2,\nu}(s)^2\,\dd s\right)^{1/2}.
+\end{equation} 
+Recover \eqref{eq:contractive-stability} if
+$\sup_{s\in[0,T]}\varepsilon_{2,\nu}(s)\leq\varepsilon$. 
 \end{exercise}
 \begin{proof}[Solution]
-Equation~\eqref{eq:empirical-from-initial} holds for every realization of the
-initial sample.  Taking expectations therefore gives
-\begin{equation}\label{eq:expected-particle-from-initial}
- \E W_1(\mu_t,\mu_t^N)
- \leq e^{Lt}\E W_1(\mu_0,\mu_0^N).
-\end{equation}
-Thus the dynamics propagates the statistical approximation error already
-present at the input; it does not create a dimension-free sampling rate.
-
-For a concrete intrinsic one-dimensional model, suppose
-$\mu_0=T_\#\lambda$, where $T:[0,1]\to\R^d$ is Lipschitz and
-$U_1,\ldots,U_N$ are i.i.d.\ with law $\lambda$.  With
-$\lambda^N=N^{-1}\sum_i\delta_{U_i}$ and
-$\mu_0^N=T_\#\lambda^N$, the contraction of Wasserstein distance under a
-Lipschitz map gives
+Use the coupling in the proof of Proposition~\ref{prop:contractive}.
+The only changed step is the discrepancy term, for which Cauchy--Schwarz gives
 \[
- W_1(\mu_0,\mu_0^N)
- \leq\Lip(T)W_1(\lambda,\lambda^N).
+ \E\ip{X_t-Y_t}{e_t^{\nu_t}(Y_t)}
+ \leq R(t)\left(\E\abs{e_t^{\nu_t}(Y_t)}^2\right)^{1/2}
+ =R(t)\varepsilon_{2,\nu}(t).
 \]
-For a bounded one-dimensional law,
-$\E W_1(\lambda,\lambda^N)\leq C N^{-1/2}$, so
-\eqref{eq:expected-particle-from-initial} retains the parametric exponent.
-
-By contrast, for a distribution with a density bounded above and below on a
-$d$-dimensional cube, $d\geq3$, Theorem~1 of
-\cite{FournierGuillin2015} gives
-$\E W_1(\mu_0,\mu_0^N)\leq C N^{-1/d}$.  This exponent is unavoidable for
-such a nondegenerate density.  Indeed, if $S$ is the support of any measure on
-at most $N$ points, then
+Thus $\frac12(R^2)'\leq-\alpha R^2+\varepsilon_{2,\nu}R$.
+Dividing where $R>0$, and regularizing as in that proof at its zeros, yields
+$R'\leq-\alpha R+\varepsilon_{2,\nu}$.  Multiplication by $e^{\alpha t}$ and
+integration give
 \[
- W_1(\mu_0,\nu)\geq\int\operatorname{dist}(x,S)\,\mu_0(\dd x).
+ R(t)\leq e^{-\alpha t}R(0)
+       +\int_0^t e^{-\alpha(t-s)}\varepsilon_{2,\nu}(s)\,\dd s.
 \]
-For a density bounded below, the volume bound
-$\abs{\{x:\operatorname{dist}(x,S)\leq r\}}\leq Nv_dr^d$ and the choice
-$r=(2Nv_d)^{-1/d}$ give a lower bound $cN^{-1/d}$.  Substitution in
-\eqref{eq:expected-particle-from-initial} therefore gives the upper bound
-$Ce^{Lt}N^{-1/d}$, with a dimension-dependent sampling exponent already
-present at time zero.  The comparison is between intrinsic dimension one and
-genuinely $d$-dimensional mass, not merely between two subsets embedded in the
-same ambient space.
+Since $W_2(\mu_t,\nu_t)\leq R(t)$ and $R(0)=W_2(\mu_0,\nu_0)$, this proves
+\eqref{eq:contractive-trajectory-L2}.  Cauchy--Schwarz in time, using
+$\int_0^t e^{-2\alpha(t-s)}\,\dd s=(1-e^{-2\alpha t})/(2\alpha)$, proves
+\eqref{eq:contractive-space-time-L2}.
 \end{proof}
 
 
+\subsection{Examples: from estimation error to rollout error}
+In the following examples, $\Phi$ is the learned field and $\Psi$ is the
+true field, so $\nu_t$ is the true trajectory law.  Conditional on the training
+data, regard the fitted parameters as fixed.  The stability conditions must
+hold for $\Phi$, whereas the loss
+$\varepsilon_{2,\nu}(t)^2$ is evaluated along $\nu_t$.
+This distinction lets us use a statistical prediction bound without requiring
+uniformly accurate fields at states never visited by the data.
 
-\subsection{Miscellaneous remarks}
-
-
-\paragraph{\textbf{From kernel error to rollout error}}
-If an interaction has the form
+\begin{example}[Estimated attention parameters]
+\label{ex:estimated-attention-stability}
+Suppose both trajectories remain supported in $B_R$ up to time $T$,
+and fix the same temperature $\tau>0$ for the true and learned fields.  Set
 \[
- b_\phi[\mu](x)=\int K_\phi(x,y)\,\mu(\dd y),
+ B=\frac{Q^\top K}{\tau},\qquad
+ \widehat B=\frac{\widehat Q^\top\widehat K}{\tau},\qquad
+ \Phi_{B,V}[\eta](x)
+ =V\frac{\int y e^{x^\top By}\,\eta(\dd y)}
+          {\int e^{x^\top By}\,\eta(\dd y)}.
 \]
-then on a visited domain
+Take $\Phi=\Phi_{\widehat B,\widehat V}$ and $\Psi=\Phi_{B,V}$.
+The proof of Lemma~\ref{lem:attention-lipschitz}, using $\norm{\widehat B}$
+for the score coefficient, verifies \eqref{eq:field-measure-lip} with
 \[
- \sup_{x,\mu}\abs{b_{\widehat\phi}[\mu](x)-b_\phi[\mu](x)}
- \leq\sup_{x,y}\abs{K_{\widehat\phi}(x,y)-K_\phi(x,y)}.
+ L_x=\norm{\widehat V}\norm{\widehat B}R^2,\qquad
+ L_\mu=\norm{\widehat V}e^{2\widehat S}(1+2\widehat S),\qquad
+ \widehat S=R^2\norm{\widehat B}.
 \]
-The right side is a field-error $\varepsilon$ in
-\eqref{eq:stability}.  More refined bounds replace the supremum by a
-data-weighted norm.  This is the forward half of the inverse problem:
-estimating the interaction in a sufficiently strong norm controls finite-time
-rollout.  The converse is false in general; similar trajectories can hide
-different kernels.
+These constants are independent of the number of tokens.
+
+To connect fitting with trajectory error, define the squared value and score
+losses
+\[
+ \eta_V(t)^2=\int\abs{(\widehat V-V)y}^2\,\nu_t(\dd y),\qquad
+ \eta_B(t)^2=\iint\abs{x^\top(\widehat B-B)y}^2\,
+                         \nu_t(\dd x)\nu_t(\dd y).
+\]
+With $S=R^2\max\{\norm B,\norm{\widehat B}\}$, we claim that
+\begin{equation}\label{eq:attention-trajectory-L2}
+ \varepsilon_{2,\nu}(t)
+ \leq e^S\bigl(\eta_V(t)+R\norm V\,\eta_B(t)\bigr).
+\end{equation}
+Here is the calculation.  Interpolate $B_u=B+u(\widehat B-B)$ for $u\in[0,1]$,
+and write
+\[
+ \pi_{u,x,t}(\dd y)
+ =\frac{e^{x^\top B_uy}}{\int e^{x^\top B_uz}\nu_t(\dd z)}\nu_t(\dd y),
+ \qquad m_u(x)=\int y\,\pi_{u,x,t}(\dd y).
+\]
+The density of $\pi_{u,x,t}$ relative to $\nu_t$ is at most $e^{2S}$.
+Differentiating the normalized integral gives
+\[
+ \partial_um_u(x)
+ =\int (y-m_u(x))\,x^\top(\widehat B-B)y\,\pi_{u,x,t}(\dd y).
+\]
+Since $\int\abs{y-m_u(x)}^2\pi_{u,x,t}(\dd y)\leq R^2$,
+Cauchy--Schwarz and then integration in $x$ and $u$ yield
+\[
+ \norm{m_1-m_0}_{L^2(\nu_t)}\leq Re^S\eta_B(t).
+\]
+Jensen's inequality similarly gives
+$\norm{(\widehat V-V)m_1}_{L^2(\nu_t)}\leq e^S\eta_V(t)$.
+Splitting the field discrepancy as
+$(\widehat V-V)m_1+V(m_1-m_0)$ proves
+\eqref{eq:attention-trajectory-L2}.  In particular,
+\[
+ \int_0^T\varepsilon_{2,\nu}(t)^2\,\dd t
+ \leq 2e^{2S}\int_0^T
+       \bigl(\eta_V(t)^2+R^2\norm V^2\eta_B(t)^2\bigr)\,\dd t,
+\]
+which can be inserted directly into \eqref{eq:stability-space-time-L2}.
+\end{example}
+
+\begin{example}[Learned potentials in a Wasserstein gradient flow]
+\label{ex:potential-trajectory-L2}
+Consider the potential interactions in
+Section~\ref{sec:potential-interactions}, with learned field
+\[
+ \Phi[\eta](x)
+ =-\nabla\widehat U(x)-\int\nabla\widehat W(x-y)\,\eta(\dd y)
+\]
+and true field $\Psi$ defined by $U,W$.  Assume the potentials are $C^2$,
+$W,\widehat W$ are even, and all their gradients are globally Lipschitz.
+Both systems are Wasserstein gradient flows of their respective energies;
+the learned energy retains that structure even when it is not the true one.
+If $\Lip(\nabla\widehat U)\leq M_U$ and
+$\Lip(\nabla\widehat W)\leq H$, coupling the integration variables gives
+\eqref{eq:field-measure-lip} with $L_x=M_U+H$ and $L_\mu=H$.
+
+Suppose in addition that
+\[
+ \nabla^2\widehat U\succeq mI,\qquad
+ \nabla^2\widehat W\succeq\lambda I,
+ \qquad m>0,\quad\lambda\geq0.
+\]
+At a fixed measure the learned field is one-sided dissipative with constant
+$m+\lambda$; changing the measure contributes at most $H W_2(\mu,\nu)$.
+Thus \eqref{eq:one-sided} holds with $\kappa=m+\lambda$ and $L_\mu=H$,
+and Proposition~\ref{prop:contractive} applies if $m+\lambda>H$.
+This is a sufficient pointwise condition, not a necessary condition for
+contraction of a convex-interaction gradient flow.
+
+For the statistical loss, write
+$g=\nabla\widehat U-\nabla U$ and
+$h=\nabla\widehat W-\nabla W$.  Along the true law,
+\[
+ e^{\nu_t}(x)=-g(x)-\int h(x-y)\,\nu_t(\dd y).
+\]
+Minkowski's and Jensen's inequalities give
+\begin{equation}\label{eq:potential-trajectory-L2}
+ \varepsilon_{2,\nu}(t)
+ \leq \norm g_{L^2(\nu_t)}
+ +\left(\iint\abs{h(x-y)}^2\nu_t(\dd x)\nu_t(\dd y)\right)^{1/2}.
+\end{equation}
+The natural data distributions are the occupation measures of the states
+and pair displacements:
+\[
+ \overline\nu_T=\frac1T\int_0^T\nu_t\,\dd t,\qquad
+ \rho_T=\frac1T\int_0^T
+       ((x,y)\mapsto x-y)_\#(\nu_t\otimes\nu_t)\,\dd t.
+\]
+Squaring \eqref{eq:potential-trajectory-L2} and integrating yields
+\begin{equation}\label{eq:potential-occupation-L2}
+ \int_0^T\varepsilon_{2,\nu}(t)^2\,\dd t
+ \leq 2T\left(\norm g_{L^2(\overline\nu_T)}^2
+                      +\norm h_{L^2(\rho_T)}^2\right).
+\end{equation}
+If $U$ is known, the factor $2$ is unnecessary and only the interaction-force
+loss remains.  Inserting this bound into
+\eqref{eq:stability-space-time-L2}, or into the contractive estimates when
+their assumptions hold, converts an occupation-weighted force-estimation
+bound into a rollout bound.  It is the gradients, not the potentials up to
+additive constants, that must be learned accurately.
+\end{example}
+
+\begin{example}[A contractive system with no uniform field-error bound]
+\label{ex:quadratic-contractivity-L2}
+Take learned potentials
+$\widehat U(x)=a\abs{x}^2/2$ and $\widehat W(z)=b\abs{z}^2/2$, with
+$a>0$ and $b\geq0$.  If $m_\eta=\int x\,\eta(\dd x)$, then
+\[
+ \Phi[\eta](x)=-(a+b)x+b m_\eta.
+\]
+Since $\abs{m_\mu-m_\nu}\leq W_2(\mu,\nu)$,
+\[
+ \ip{x-y}{\Phi[\mu](x)-\Phi[\nu](y)}
+ \leq-(a+b)\abs{x-y}^2+bW_2(\mu,\nu)\abs{x-y}.
+\]
+Thus $\kappa=a+b$, $L_\mu=b$, and the contraction rate is exactly $a$:
+no condition $a>b$ is needed.
+
+Let the true potentials have parameters $a_0>0$, $b_0\geq0$, and put
+$\delta a=a-a_0$, $\delta b=b-b_0$.  For the deterministic true evolution,
+its mean $m_t$ and centered second moment $v_t$ satisfy
+\[
+ m_t=e^{-a_0t}m_0,\qquad
+ v_t:=\int\abs{x-m_t}^2\nu_t(\dd x)
+     =e^{-2(a_0+b_0)t}v_0.
+\]
+Indeed $m_t'=-a_0m_t$ and the centered trajectories obey
+$\frac{\dd}{\dd t}(Y_t-m_t)=-(a_0+b_0)(Y_t-m_t)$.
+The field discrepancy is
+\[
+ e^{\nu_t}(x)=-(\delta a+\delta b)(x-m_t)-\delta a\,m_t,
+\]
+so the centered cross term integrates to zero and
+\begin{equation}\label{eq:quadratic-trajectory-L2}
+ \varepsilon_{2,\nu}(t)^2
+ = (\delta a+\delta b)^2 e^{-2(a_0+b_0)t}v_0
+   +(\delta a)^2 e^{-2a_0t}\abs{m_0}^2.
+\end{equation}
+This error is finite for every $\nu_0\in\cP_2(\R^d)$, including Gaussian
+initial laws.  For an unbounded-support law and
+$\delta a+\delta b\ne0$, however, the uniform field discrepancy is infinite.
+Nevertheless \eqref{eq:contractive-trajectory-L2} applies with $\alpha=a$.
+For example, define
+$\varepsilon_0^2=(\delta a+\delta b)^2v_0+(\delta a)^2\abs{m_0}^2$.
+Then $\varepsilon_{2,\nu}(t)\leq\varepsilon_0$ and
+\[
+ W_2(\mu_t,\nu_t)
+ \leq e^{-at}W_2(\mu_0,\nu_0)
+       +\frac{1-e^{-at}}{a}\varepsilon_0.
+\]
+Using the full decaying loss in \eqref{eq:quadratic-trajectory-L2} gives a
+sharper bound than this error floor.  This example explains why a
+trajectory $L^2$ loss is a more useful hypothesis than a global supremum.
+\end{example}
+
 
 \paragraph{\textbf{Literature and storyline.}}
 Dobrushin's stability estimate for Vlasov equations was a foundational shift:
