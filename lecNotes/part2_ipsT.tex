@@ -5052,9 +5052,10 @@ $h_m\varepsilon_m$ proves it for $m+1$.  Taking $m=L$ gives
 
 
 %%%%%%%%%%%
-\subsection{Contractivity from one-sided dissipation}
+\subsection{Contractivity for dissipative systems}
 Global Lipschitz estimates permit exponential growth even when the true
-dynamics is contracting.  A one-sided condition captures dissipation.
+dynamics is contracting.  For dissipative systems, one can instead use a one-sided Lipschitz condition to obtain a contractive regime, in which model error produces a bounded error floor rather
+than exponential accumulation. 
 
 \begin{proposition}[Contractive regime]\label{prop:contractive}
 Suppose, for some $\kappa>L_\mu\geq0$,
@@ -5117,8 +5118,7 @@ $R(0)=W_2(\mu_0,\nu_0)$, proving \eqref{eq:contractive-stability}.
 For additive diffusions driven by the same Brownian motion, the stochastic
 increments cancel in $X_t-Y_t$, so the identical calculation applies.
 \end{proof}
-In the contractive regime, model error produces a bounded error floor rather
-than exponential accumulation. 
+
 
 \begin{exercise}[Trajectory $L^2$ perturbation bounds]\label{ex:contractive-trajectory-L2}
 Under the one-sided condition \eqref{eq:one-sided}, replace the uniform
@@ -5160,11 +5160,20 @@ integration give
 Since $W_2(\mu_t,\nu_t)\leq R(t)$ and $R(0)=W_2(\mu_0,\nu_0)$, this proves
 \eqref{eq:contractive-trajectory-L2}.  Cauchy--Schwarz in time, using
 $\int_0^t e^{-2\alpha(t-s)}\,\dd s=(1-e^{-2\alpha t})/(2\alpha)$, proves
-\eqref{eq:contractive-space-time-L2}.
+\eqref{eq:contractive-space-time-L2}. 
+Finally, if $\varepsilon_{2,\nu}(s)\leq\varepsilon$, then
+\[
+ \int_0^t e^{-\alpha(t-s)}\varepsilon_{2,\nu}(s)\,\dd s
+ \leq\varepsilon\int_0^t e^{-\alpha(t-s)}\,\dd s
+ =\frac{1-e^{-\alpha t}}{\alpha}\varepsilon.
+\]
+Inserting this into \eqref{eq:contractive-trajectory-L2} recovers
+\eqref{eq:contractive-stability}.
 \end{proof}
 
 
-\subsection{Examples: from estimation error to rollout error}
+
+\subsection{Examples: from estimation error to prediction error}
 In the following examples, $\Phi$ is the learned field and $\Psi$ is the
 true field, so $\nu_t$ is the true trajectory law.  Conditional on the training
 data, regard the fitted parameters as fixed.  The stability conditions must
@@ -5252,6 +5261,29 @@ the learned energy retains that structure even when it is not the true one.
 If $\Lip(\nabla\widehat U)\leq M_U$ and
 $\Lip(\nabla\widehat W)\leq H$, coupling the integration variables gives
 \eqref{eq:field-measure-lip} with $L_x=M_U+H$ and $L_\mu=H$.
+Indeed, for $\mu,\nu\in\cP_1(\R^d)$, let $\pi$ be any coupling of
+$\mu$ and $\nu$.  Using its two marginals, write
+\[
+\begin{aligned}
+ \Phi[\mu](x)-\Phi[\nu](y)
+ ={}&-\bigl(\nabla\widehat U(x)-\nabla\widehat U(y)\bigr)\\
+ &-\iint\bigl(\nabla\widehat W(x-z)
+              -\nabla\widehat W(y-w)\bigr)\,\pi(\dd z,\dd w).
+\end{aligned}
+\]
+The Lipschitz bounds and the triangle inequality therefore give
+\[
+\begin{aligned}
+ \abs{\Phi[\mu](x)-\Phi[\nu](y)}
+ &\leq M_U\abs{x-y}
+       +H\iint\abs{(x-z)-(y-w)}\,\pi(\dd z,\dd w)\\
+ &\leq(M_U+H)\abs{x-y}
+       +H\iint\abs{z-w}\,\pi(\dd z,\dd w).
+\end{aligned}
+\]
+Taking the infimum over $\pi$ gives the claimed $W_1$ estimate.
+
+
 
 Suppose in addition that
 \[
@@ -5260,7 +5292,41 @@ Suppose in addition that
  \qquad m>0,\quad\lambda\geq0.
 \]
 At a fixed measure the learned field is one-sided dissipative with constant
-$m+\lambda$; changing the measure contributes at most $H W_2(\mu,\nu)$.
+$m+\lambda$; changing the measure contributes at most $H W_2(\mu,\nu)$. 
+To see the first claim, differentiate the field with respect to its state
+variable.  Since the Hessians are bounded and $\mu$ has mass one, its Jacobian
+satisfies
+\[
+ D_x\Phi[\mu](r)
+ =-\nabla^2\widehat U(r)
+  -\int\nabla^2\widehat W(r-z)\,\mu(\dd z)
+ \preceq-(m+\lambda)I.
+\]
+For $d=x-y$, the fundamental theorem of calculus along the segment from
+$y$ to $x$ now yields
+\[
+ \ip{d}{\Phi[\mu](x)-\Phi[\mu](y)}
+ =\int_0^1\ip{d}{D_x\Phi[\mu](y+sd)d}\,\dd s
+ \leq-(m+\lambda)\abs{d}^2.
+\]
+For the second claim, set the two state arguments equal in the preceding
+coupling estimate.  For $\mu,\nu\in\cP_2(\R^d)$ this gives
+\[
+ \abs{\Phi[\mu](y)-\Phi[\nu](y)}
+ \leq H W_1(\mu,\nu)\leq H W_2(\mu,\nu),
+\]
+where $W_1\leq W_2$ follows from Cauchy--Schwarz under a $W_2$-optimal
+coupling.  Splitting the field difference at $\Phi[\mu](y)$ and applying
+Cauchy--Schwarz to the measure-change term, we obtain
+\[
+\begin{aligned}
+ \ip{x-y}{\Phi[\mu](x)-\Phi[\nu](y)}
+ ={}&\ip{x-y}{\Phi[\mu](x)-\Phi[\mu](y)}\\
+ &+\ip{x-y}{\Phi[\mu](y)-\Phi[\nu](y)}\\
+ \leq{}&-(m+\lambda)\abs{x-y}^2
+       +H W_2(\mu,\nu)\abs{x-y}.
+\end{aligned}
+\]
 Thus \eqref{eq:one-sided} holds with $\kappa=m+\lambda$ and $L_\mu=H$,
 and Proposition~\ref{prop:contractive} applies if $m+\lambda>H$.
 This is a sufficient pointwise condition, not a necessary condition for
